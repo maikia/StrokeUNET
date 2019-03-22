@@ -13,7 +13,7 @@ config["image_shape"] = (144, 144, 144)  # This determines what shape the images
 config["patch_shape"] = (64, 64, 64)  # switch to None to train on the whole image
 config["labels"] = (1, 2, 4)  # the label numbers on the input image
 config["n_labels"] = len(config["labels"])
-config["all_modalities"] = ["t1", "t1ce", "flair", "t2"]
+config["all_modalities"] = ["t1", "flair"] #, "t1ce", "flair", "t2"]
 config["training_modalities"] = config["all_modalities"]  # change this if you want to only use some of the modalities
 config["nb_channels"] = len(config["training_modalities"])
 if "patch_shape" in config and config["patch_shape"] is not None:
@@ -43,12 +43,13 @@ config["data_file"] = os.path.abspath("brats_data.h5")
 config["model_file"] = os.path.abspath("tumor_segmentation_model.h5")
 config["training_file"] = os.path.abspath("training_ids.pkl")
 config["validation_file"] = os.path.abspath("validation_ids.pkl")
-config["overwrite"] = False  # If True, will previous files. If False, will use previously written files.
+config["overwrite"] = True # False  # If True, will previous files. If False, will use previously written files.
 
 
 def fetch_training_data_files():
     training_data_files = list()
     for subject_dir in glob.glob(os.path.join(os.path.dirname(__file__), "data", "preprocessed", "*", "*")):
+        print(subject_dir)
         subject_files = list()
         for modality in config["training_modalities"] + ["truth"]:
             subject_files.append(os.path.join(subject_dir, modality + ".nii.gz"))

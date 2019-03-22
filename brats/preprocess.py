@@ -110,7 +110,8 @@ def check_origin(in_file, in_file2):
 
 def normalize_image(in_file, out_file, bias_correction=True):
     if bias_correction:
-        correct_bias(in_file, out_file)
+        pass
+        # correct_bias(in_file, out_file)
     else:
         shutil.copy(in_file, out_file)
     return out_file
@@ -152,7 +153,7 @@ def convert_brats_data(brats_folder, out_folder, overwrite=False, no_bias_correc
     or tuple.
     :return:
     """
-    for subject_folder in glob.glob(os.path.join(brats_folder, "*", "*")):
+    for subject_folder in glob.glob(os.path.join(brats_folder, "*")):
         if os.path.isdir(subject_folder):
             subject = os.path.basename(subject_folder)
             new_subject_folder = os.path.join(out_folder, os.path.basename(os.path.dirname(subject_folder)),
