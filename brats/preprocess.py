@@ -141,6 +141,43 @@ def convert_brats_folder(in_folder, out_folder, truth_name='seg', no_bias_correc
     shutil.copy(truth_file, out_file)
     check_origin(out_file, get_image(in_folder, config["all_modalities"][0]))
 
+def convert_stroke_data(): #stroke_folder, out_folder, overwrite=False):
+    """
+    Copies and renames the data files to run within this program settings
+
+    """
+    stroke_folder = '../../../stroke/data/images'
+    out_folder = 'data/preprocessed'
+    overwrite =True
+    # create data/preprocessed directory with files t1 and truth
+    # removes the site directories from the tree 
+    #print('glob:',glob.glob(os.path.join(stroke_folder, "*")))
+    for site_folder in glob.glob(os.path.join(stroke_folder, "*")):
+        if os.path.isdir(site_folder):
+            for subject_folder in glob.glob(os.path.join(site_folder, "*")):
+                if os.path.isdir(subject_folder):
+                    subject = os.path.basename(subject_folder)
+                    new_subject_folder = os.path.join(out_folder, os.path.basename(os.path.dirname(subject_folder)),
+                                              subject)
+                    if not os.path.exists(new_subject_folder): 
+                        os.makedirs(new_subject_folder)
+                    image_file = get_stroke_image(subject_folder)
+                    truth_file = get_stroke_image(subject_folder, name='LesionSmooth_stx')
+
+                    out_file_t1 = os.path.abspath(os.path.join(new_subject_folder, "t1.nii.gz"))
+                    shutil.copy(image_file, out_file_t1)
+
+                    out_file_mask = os.path.abspath(os.path.join(new_subject_folder, "truth.nii.gz"))
+                    shutil.copy(truth_file, out_file_mask)
+
+
+def get_stroke_image(subject_folder, subfolder='t01', name='t1'):
+    file_card = os.path.join(subject_folder, subfolder, "*" + name + "*.nii.gz")
+    try:
+        return glob.glob(file_card)[0]
+    except IndexError:
+        raise RuntimeError("Could not find file matching {}".format(file_card))
+
 
 def convert_brats_data(brats_folder, out_folder, overwrite=False, no_bias_correction_modalities=("flair",)):
     """
