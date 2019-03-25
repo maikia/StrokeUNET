@@ -141,17 +141,12 @@ def convert_brats_folder(in_folder, out_folder, truth_name='seg', no_bias_correc
     shutil.copy(truth_file, out_file)
     check_origin(out_file, get_image(in_folder, config["all_modalities"][0]))
 
-def convert_stroke_data(): #stroke_folder, out_folder, overwrite=False):
+def convert_stroke_data(stroke_folder='../../../stroke/data/images', 
+        out_folder='data/preprocessed'): #, overwrite =True):
     """
     Copies and renames the data files to run within this program settings
-
     """
-    stroke_folder = '../../../stroke/data/images'
-    out_folder = 'data/preprocessed'
-    overwrite =True
     # create data/preprocessed directory with files t1 and truth
-    # removes the site directories from the tree 
-    #print('glob:',glob.glob(os.path.join(stroke_folder, "*")))
     for site_folder in glob.glob(os.path.join(stroke_folder, "*")):
         if os.path.isdir(site_folder):
             for subject_folder in glob.glob(os.path.join(site_folder, "*")):
