@@ -1,5 +1,8 @@
-import os
 import glob
+
+import os
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 from unet3d.data import write_data_to_file, open_data_file
 from unet3d.generator import get_training_and_validation_generators
@@ -42,7 +45,7 @@ config["data_file"] = os.path.abspath("brats_data.h5")
 config["model_file"] = os.path.abspath("tumor_segmentation_model.h5")
 config["training_file"] = os.path.abspath("training_ids.pkl")
 config["validation_file"] = os.path.abspath("validation_ids.pkl")
-config["overwrite"] = False # False  # If True, will previous files. If False, will use previously written files.
+config["overwrite"] = True # False  # If True, will previous files. If False, will use previously written files.
 
 
 def fetch_training_data_files():
@@ -97,6 +100,14 @@ def main(overwrite=False):
         skip_blank=config["skip_blank"],
         augment_flip=config["flip"],
         augment_distortion_factor=config["distort"])
+
+
+    # normalize the dataset if required
+    # use only the training img (training_keys_file)
+    fetch_training_data_files()
+
+    
+
 
     # run training
     train_model(model=model,

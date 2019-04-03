@@ -1,6 +1,10 @@
 import math
 from functools import partial
 
+import os
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
+
 from keras import backend as K
 from keras.callbacks import ModelCheckpoint, CSVLogger, LearningRateScheduler, ReduceLROnPlateau, EarlyStopping
 from keras.models import load_model
@@ -9,7 +13,6 @@ from unet3d.metrics import (dice_coefficient, dice_coefficient_loss, dice_coef, 
                             weighted_dice_coefficient_loss, weighted_dice_coefficient)
 
 K.set_image_dim_ordering('th')
-
 
 # learning rate schedule
 def step_decay(epoch, initial_lrate, drop, epochs_drop):

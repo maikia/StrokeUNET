@@ -22,11 +22,22 @@ def create_data_file(out_file, n_channels, n_samples, image_shape):
 
 def write_image_data_to_file(image_files, data_storage, truth_storage, image_shape, n_channels, affine_storage,
                              truth_dtype=np.uint8, crop=True):
-    for set_of_files in image_files:
+    # it will save all of the assigned indices and the corresponding paths of the files
+    import pandas as pd
+    rows = list()
+    header = ("t1_path", "truth_path", "idx_ref")
+    for idx, set_of_files in enumerate(image_files):
+        # create reference .csv file
+        rows.append([set_of_files[0], set_of_files[1], idx])
+
         images = reslice_image_set(set_of_files, image_shape, label_indices=len(set_of_files) - 1, crop=crop)
         subject_data = [image.get_data() for image in images]
         add_data_to_storage(data_storage, truth_storage, affine_storage, subject_data, images[0].affine, n_channels,
                             truth_dtype)
+
+    df = pd.DataFrame.from_records(rows, columns=header) #, index=subject_ids)
+    df.to_csv(r'File_index.csv')
+    print('wrote to file: File_index.csv')
     return data_storage, truth_storage
 
 

@@ -10,6 +10,8 @@ from .utils.patches import compute_patch_indices, get_random_nd_index, get_patch
 from .augment import augment_data, random_permutation_x_y
 
 
+
+
 def get_training_and_validation_generators(data_file, batch_size, n_labels, training_keys_file, validation_keys_file,
                                            data_split=0.8, overwrite=False, labels=None, augment=False,
                                            augment_flip=True, augment_distortion_factor=0.25, patch_shape=None,
@@ -56,6 +58,11 @@ def get_training_and_validation_generators(data_file, batch_size, n_labels, trai
                                                           training_file=training_keys_file,
                                                           validation_file=validation_keys_file)
 
+
+    # calculate mean of the training data t1
+    #img_shape = (144, 144, 144)
+    #get_image_generator(img_paths, img_shape)
+
     print(data_file)
     training_generator = data_generator(data_file, training_list,
                                         batch_size=batch_size,
@@ -69,6 +76,7 @@ def get_training_and_validation_generators(data_file, batch_size, n_labels, trai
                                         patch_start_offset=training_patch_start_offset,
                                         skip_blank=skip_blank,
                                         permute=permute)
+
     validation_generator = data_generator(data_file, validation_list,
                                           batch_size=validation_batch_size,
                                           n_labels=n_labels,
@@ -92,6 +100,12 @@ def get_training_and_validation_generators(data_file, batch_size, n_labels, trai
 
     return training_generator, validation_generator, num_training_steps, num_validation_steps
 
+
+def get_image_generator(img_paths, img_shape):
+    for idx, x in enumerate(img_paths):
+        img = load_img(x[0])
+        print('working on:', x[0])
+        yield np.reshape(img.get_data(), img_shape[0]*img_shape[1]*img_shape[2])
 
 def get_number_of_steps(n_samples, batch_size):
     if n_samples <= batch_size:
@@ -209,6 +223,9 @@ def add_data(x_list, y_list, data_file, index, augment=False, augment_flip=False
     :return:
     """
     data, truth = get_data_from_file(data_file, index, patch_shape=patch_shape)
+    # subtract the mean etc
+
+
     if augment:
         if patch_shape is not None:
             affine = data_file.root.affine[index[0]]
