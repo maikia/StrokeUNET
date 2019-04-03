@@ -45,7 +45,7 @@ config["data_file"] = os.path.abspath("brats_data.h5")
 config["model_file"] = os.path.abspath("tumor_segmentation_model.h5")
 config["training_file"] = os.path.abspath("training_ids.pkl")
 config["validation_file"] = os.path.abspath("validation_ids.pkl")
-config["overwrite"] = True # False  # If True, will previous files. If False, will use previously written files.
+config["overwrite"] = False # False  # If True, will previous files. If False, will use previously written files.
 
 
 def fetch_training_data_files():
@@ -105,9 +105,6 @@ def main(overwrite=False):
     # normalize the dataset if required
     # use only the training img (training_keys_file)
     fetch_training_data_files()
-
-    
-
 
     # run training
     train_model(model=model,

@@ -60,8 +60,25 @@ def get_training_and_validation_generators(data_file, batch_size, n_labels, trai
 
 
     # calculate mean of the training data t1
-    #img_shape = (144, 144, 144)
-    #get_image_generator(img_paths, img_shape)
+    from sklearn.preprocessing import StandardScaler
+    import pandas as pd
+
+    img_shape = (144, 144, 144)
+    idx_file = 'data/File_index.csv' # file where all the indexes and the data paths are stored
+    
+    df = pd.read_csv(idx_file)
+    train_imgs = list(df.loc[df['idx_ref'].isin(training_list)]['t1_path'])
+    scalar = StandardScaler()
+
+    [scalar.partial_fit([img_reshape]) for img_reshape in get_image_generator(train_imgs, img_shape)]
+    
+    imgs_mean = np.reshape(scalar.mean_, [img_shape[0], img_shape[1], img_shape[2]]) 
+    imgs_std = np.reshape(scalar.scale_, [img_shape[0], img_shape[1], img_shape[2]])
+    import matplotlib.pyplot as plt
+    plt.imshow(imgs_mean[:, :, 80])
+    
+    plt.savefig('data/image.png')
+    np.savez('data/train_mean_std.npz', img_mean=imgs_mean, img_std=imgs_std)
 
     print(data_file)
     training_generator = data_generator(data_file, training_list,
@@ -102,9 +119,13 @@ def get_training_and_validation_generators(data_file, batch_size, n_labels, trai
 
 
 def get_image_generator(img_paths, img_shape):
-    for idx, x in enumerate(img_paths):
-        img = load_img(x[0])
-        print('working on:', x[0])
+    from unet3d.utils.utils import read_image, read_image_files
+    for idx, img_path in enumerate(img_paths):
+        #images = read_image_files(x, image_shape=img_shape, crop=True) #, label_indices=label_indices)
+        img = read_image(img_path, image_shape=img_shape, crop=False, 
+                    interpolation="nearest")
+        #img = load_img(x[0])
+        print('working on:', img_path)
         yield np.reshape(img.get_data(), img_shape[0]*img_shape[1]*img_shape[2])
 
 def get_number_of_steps(n_samples, batch_size):

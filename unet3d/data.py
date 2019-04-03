@@ -36,8 +36,8 @@ def write_image_data_to_file(image_files, data_storage, truth_storage, image_sha
                             truth_dtype)
 
     df = pd.DataFrame.from_records(rows, columns=header) #, index=subject_ids)
-    df.to_csv(r'File_index.csv')
-    print('wrote to file: File_index.csv')
+    df.to_csv(r'data/File_index.csv')
+    print('wrote to file: data/File_index.csv')
     return data_storage, truth_storage
 
 
