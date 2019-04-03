@@ -66,7 +66,8 @@ def main(overwrite=False):
     if overwrite or not os.path.exists(config["data_file"]):
         training_files = fetch_training_data_files()
         try:
-            write_data_to_file(training_files, config["data_file"], image_shape=config["image_shape"])
+            write_data_to_file(training_files, config["data_file"], 
+                image_shape=config["image_shape"], normalize=False)
         except:
             import pdb; pdb.set_trace()
     data_file_opened = open_data_file(config["data_file"])
