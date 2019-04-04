@@ -58,7 +58,10 @@ def get_training_and_validation_generators(data_file, batch_size, n_labels, trai
                                                           training_file=training_keys_file,
                                                           validation_file=validation_keys_file)
 
+    '''
+        # this part was shifted to normalize.py and it is done before running the generators
     if overwrite or not os.path.exists('data/train_mean_std.npz'):
+
         # calculate mean of the training data t1
         from sklearn.preprocessing import StandardScaler
         import pandas as pd
@@ -81,6 +84,7 @@ def get_training_and_validation_generators(data_file, batch_size, n_labels, trai
         plt.savefig('data/image.png')
         np.savez('data/train_mean_std.npz', img_mean=imgs_mean, img_std=imgs_std)
         print('saved mean figure in data/image.png')
+    '''
 
     print('data file: ', data_file)
     training_generator = data_generator(data_file, training_list,
@@ -272,16 +276,18 @@ def get_data_from_file(data_file, index, patch_shape=None):
         index, patch_index = index
         data, truth = get_data_from_file(data_file, index, patch_shape=None)
 
-        # normalize the data
-        data_mean_std = np.load('data/train_mean_std.npz')
-        d_mean = data_mean_std['img_mean']
-        d_std = data_mean_std['img_std']
+        # normalize the data (now shifted to normalize.py)
+        #data_mean_std = np.load('data/train_mean_std.npz')
+        #d_mean = data_mean_std['img_mean']
+        #d_std = data_mean_std['img_std']
+        #data = (data-d_mean[None, ...])/d_std[None, ...]
+
         #print('data shape:', data.shape, d_mean.shape, d_std.shape)
         #print('data max, min:', np.max(data), np.min(data))
         #print('mean max, min:', np.max(d_mean), np.min(d_mean))
         #print('std max, min:', np.max(d_std), np.min(d_std))
 
-        data = (data-d_mean[None, ...])/d_std[None, ...]
+        
 
         #import matplotlib.pyplot as plt 
         #plt.imshow(data[0,:,:,70])

@@ -5,6 +5,7 @@ from nilearn.image import new_img_like
 
 from unet3d.utils.utils import resize, read_image_files
 from .utils import crop_img, crop_img_to, read_image
+from .utils import pickle_dump, pickle_load
 
 
 def find_downsized_info(training_data_files, input_shape):
@@ -80,6 +81,33 @@ def normalize_data_storage(data_storage):
     std = np.asarray(stds).mean(axis=0)
     for index in range(data_storage.shape[0]):
         data_storage[index] = normalize_data(data_storage[index], mean, std)
+    return data_storage
+
+
+def normalize_data_by_train(data_storage):
+    # it normalizes each image separately and calculates mean and std on 
+    # previously defined training set (if the training set changes this should
+    # also change)
+    from sklearn.preprocessing import StandardScaler
+    import pandas as pd
+    training_list = pickle_load(os.path.abspath("training_ids.pkl")) # careful, normally not hardcoded
+    scalar = StandardScaler()
+
+    for index in range(data_storage.shape[0]):
+        data = data_storage[index]
+
+        # calculate mean and stds only of training data
+        # take only training images
+        if index in training_list:
+            img_shape = data.shape()
+            img_reshape = np.reshape(data.get_data(), 
+                            img_shape[0]*img_shape[1]*img_shape[2])
+            scalar.partial_fit([img_reshape])        
+
+    for index in range(data_storage.shape[0]):
+        # noramlize all the images
+        data_storage[index] = normalize_data(data_storage[index], 
+                            scalar.mean_, scalar.scale_)
     return data_storage
 
 

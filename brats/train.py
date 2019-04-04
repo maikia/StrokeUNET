@@ -45,7 +45,7 @@ config["data_file"] = os.path.abspath("brats_data.h5")
 config["model_file"] = os.path.abspath("tumor_segmentation_model.h5")
 config["training_file"] = os.path.abspath("training_ids.pkl")
 config["validation_file"] = os.path.abspath("validation_ids.pkl")
-config["overwrite"] = False # False  # If True, will previous files. If False, will use previously written files.
+config["overwrite"] = True # False  # If True, will previous files. If False, will use previously written files.
 
 
 def fetch_training_data_files():
@@ -67,7 +67,7 @@ def main(overwrite=False):
         training_files = fetch_training_data_files()
         try:
             write_data_to_file(training_files, config["data_file"], 
-                image_shape=config["image_shape"], normalize=False)
+                image_shape=config["image_shape"]) #, normalize=False)
         except:
             import pdb; pdb.set_trace()
     data_file_opened = open_data_file(config["data_file"])
@@ -87,7 +87,9 @@ def main(overwrite=False):
         data_file_opened,
         batch_size=config["batch_size"],
         data_split=config["validation_split"],
-        overwrite=overwrite,
+        overwrite=False, #overwrite, # set to False so that the training idcs 
+                    # are used as previously; as they are now used for the
+                    # normalization already in write_data_to_file (above)
         validation_keys_file=config["validation_file"],
         training_keys_file=config["training_file"],
         n_labels=config["n_labels"],

@@ -25,10 +25,23 @@ def write_image_data_to_file(image_files, data_storage, truth_storage, image_sha
     # it will save all of the assigned indices and the corresponding paths of the files
     import pandas as pd
     rows = list()
-    header = ("t1_path", "truth_path", "idx_ref")
+    header = ("t1_path", "truth_path", "idx_ref", "is_train")
+
+    # if later overwrite is set and the new training and validation set will be chosen
+    # the mean of training images will be wrongly calculated
+    training_file = os.path.abspath("training_ids.pkl")
+    validation_file = os.path.abspath("validation_ids.pkl")
+    training_list, validation_list = pickle_load(training_file), pickle_load(validation_file)
+
     for idx, set_of_files in enumerate(image_files):
         # create reference .csv file
-        rows.append([set_of_files[0], set_of_files[1], idx])
+        if idx in training_list:
+            # set True if training, False if validation
+            is_train = True
+        else:
+            is_train = False
+
+        rows.append([set_of_files[0], set_of_files[1], idx, is_train])
 
         images = reslice_image_set(set_of_files, image_shape, label_indices=len(set_of_files) - 1, crop=crop)
         subject_data = [image.get_data() for image in images]
@@ -79,6 +92,7 @@ def write_data_to_file(training_data_files, out_file, image_shape, truth_dtype=n
         hdf5_file.create_array(hdf5_file.root, 'subject_ids', obj=subject_ids)
     if normalize:
         normalize_data_storage(data_storage)
+    
     hdf5_file.close()
     return out_file
 
