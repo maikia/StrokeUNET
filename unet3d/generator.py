@@ -58,7 +58,6 @@ def get_training_and_validation_generators(data_file, batch_size, n_labels, trai
                                                           training_file=training_keys_file,
                                                           validation_file=validation_keys_file)
 
-    overwrite = True
     if overwrite or not os.path.exists('data/train_mean_std.npz'):
         # calculate mean of the training data t1
         from sklearn.preprocessing import StandardScaler
@@ -71,7 +70,8 @@ def get_training_and_validation_generators(data_file, batch_size, n_labels, trai
         train_imgs = list(df.loc[df['idx_ref'].isin(training_list)]['t1_path'])
         scalar = StandardScaler()
 
-        [scalar.partial_fit([img_reshape]) for img_reshape in get_image_generator(train_imgs, img_shape)]
+        for img_reshape in get_image_generator(train_imgs, img_shape):
+            scalar.partial_fit([img_reshape]) 
         
         imgs_mean = np.reshape(scalar.mean_, [img_shape[0], img_shape[1], img_shape[2]]) 
         imgs_std = np.reshape(scalar.scale_, [img_shape[0], img_shape[1], img_shape[2]])
@@ -80,8 +80,9 @@ def get_training_and_validation_generators(data_file, batch_size, n_labels, trai
 
         plt.savefig('data/image.png')
         np.savez('data/train_mean_std.npz', img_mean=imgs_mean, img_std=imgs_std)
+        print('saved mean figure in data/image.png')
 
-    print(data_file)
+    print('data file: ', data_file)
     training_generator = data_generator(data_file, training_list,
                                         batch_size=batch_size,
                                         n_labels=n_labels,
@@ -102,7 +103,6 @@ def get_training_and_validation_generators(data_file, batch_size, n_labels, trai
                                           patch_shape=patch_shape,
                                           patch_overlap=validation_patch_overlap,
                                           skip_blank=skip_blank)
-
     # Set the number of training and testing samples per epoch correctly
     num_training_steps = get_number_of_steps(get_number_of_patches(data_file, training_list, patch_shape,
                                                                    skip_blank=skip_blank,
