@@ -58,34 +58,6 @@ def get_training_and_validation_generators(data_file, batch_size, n_labels, trai
                                                           training_file=training_keys_file,
                                                           validation_file=validation_keys_file)
 
-    '''
-        # this part was shifted to normalize.py and it is done before running the generators
-    if overwrite or not os.path.exists('data/train_mean_std.npz'):
-
-        # calculate mean of the training data t1
-        from sklearn.preprocessing import StandardScaler
-        import pandas as pd
-
-        img_shape = (144, 144, 144)
-        idx_file = 'data/File_index.csv' # file where all the indexes and the data paths are stored
-        
-        df = pd.read_csv(idx_file)
-        train_imgs = list(df.loc[df['idx_ref'].isin(training_list)]['t1_path'])
-        scalar = StandardScaler()
-
-        for img_reshape in get_image_generator(train_imgs, img_shape):
-            scalar.partial_fit([img_reshape]) 
-        
-        imgs_mean = np.reshape(scalar.mean_, [img_shape[0], img_shape[1], img_shape[2]]) 
-        imgs_std = np.reshape(scalar.scale_, [img_shape[0], img_shape[1], img_shape[2]])
-        import matplotlib.pyplot as plt
-        plt.imshow(imgs_mean[:, :, 80])
-
-        plt.savefig('data/image.png')
-        np.savez('data/train_mean_std.npz', img_mean=imgs_mean, img_std=imgs_std)
-        print('saved mean figure in data/image.png')
-    '''
-
     print('data file: ', data_file)
     training_generator = data_generator(data_file, training_list,
                                         batch_size=batch_size,
@@ -122,17 +94,6 @@ def get_training_and_validation_generators(data_file, batch_size, n_labels, trai
 
     return training_generator, validation_generator, num_training_steps, num_validation_steps
 
-
-def get_image_generator(img_paths, img_shape):
-    from unet3d.utils.utils import read_image, read_image_files
-    for idx, img_path in enumerate(img_paths):
-        #images = read_image_files(x, image_shape=img_shape, crop=True) #, label_indices=label_indices)
-        img = read_image(img_path, image_shape=img_shape, crop=False, 
-                    interpolation="nearest")
-        #img = load_img(x[0])
-        #print('preimage min max: ', img.get_data().max(), img.get_data().min())
-        #print('working on:', img_path)
-        yield np.reshape(img.get_data(), img_shape[0]*img_shape[1]*img_shape[2])
 
 def get_number_of_steps(n_samples, batch_size):
     if n_samples <= batch_size:
@@ -275,25 +236,6 @@ def get_data_from_file(data_file, index, patch_shape=None):
     if patch_shape:
         index, patch_index = index
         data, truth = get_data_from_file(data_file, index, patch_shape=None)
-
-        # normalize the data (now shifted to normalize.py)
-        #data_mean_std = np.load('data/train_mean_std.npz')
-        #d_mean = data_mean_std['img_mean']
-        #d_std = data_mean_std['img_std']
-        #data = (data-d_mean[None, ...])/d_std[None, ...]
-
-        #print('data shape:', data.shape, d_mean.shape, d_std.shape)
-        #print('data max, min:', np.max(data), np.min(data))
-        #print('mean max, min:', np.max(d_mean), np.min(d_mean))
-        #print('std max, min:', np.max(d_std), np.min(d_std))
-
-        
-
-        #import matplotlib.pyplot as plt 
-        #plt.imshow(data[0,:,:,70])
-        #plt.savefig('data/image'+str(index)+'.png')
-        #plt.close('all')
-        ######################################
 
         x = get_patch_from_3d_data(data, patch_shape, patch_index)
         y = get_patch_from_3d_data(truth, patch_shape, patch_index)

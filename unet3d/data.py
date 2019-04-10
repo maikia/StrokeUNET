@@ -1,10 +1,11 @@
 import os
 
 import numpy as np
+import matplotlib.pyplot as plt
 import tables
 
-from .normalize import normalize_data_storage, reslice_image_set
-
+from .normalize import normalize_data_storage, reslice_image_set, normalize_data_by_train
+from .utils import pickle_dump, pickle_load
 
 def create_data_file(out_file, n_channels, n_samples, image_shape):
     hdf5_file = tables.open_file(out_file, mode='w')
@@ -31,7 +32,7 @@ def write_image_data_to_file(image_files, data_storage, truth_storage, image_sha
     # the mean of training images will be wrongly calculated
     training_file = os.path.abspath("training_ids.pkl")
     validation_file = os.path.abspath("validation_ids.pkl")
-    training_list, validation_list = pickle_load(training_file), pickle_load(validation_file)
+    training_list = pickle_load(os.path.abspath("training_ids.pkl")) # careful, normally not hardcoded
 
     for idx, set_of_files in enumerate(image_files):
         # create reference .csv file
@@ -61,7 +62,7 @@ def add_data_to_storage(data_storage, truth_storage, affine_storage, subject_dat
 
 
 def write_data_to_file(training_data_files, out_file, image_shape, truth_dtype=np.uint8, subject_ids=None,
-                       normalize=True, crop=True):
+                       normalize=False, crop=True):
     """
     Takes in a set of training images and writes those images to an hdf5 file.
     :param training_data_files: List of tuples containing the training data files. The modalities should be listed in
@@ -85,16 +86,39 @@ def write_data_to_file(training_data_files, out_file, image_shape, truth_dtype=n
         # If something goes wrong, delete the incomplete data file
         os.remove(out_file)
         raise e
-
     write_image_data_to_file(training_data_files, data_storage, truth_storage, image_shape,
                              truth_dtype=truth_dtype, n_channels=n_channels, affine_storage=affine_storage, crop=crop)
     if subject_ids:
         hdf5_file.create_array(hdf5_file.root, 'subject_ids', obj=subject_ids)
     if normalize:
+        idx1, idx2 = 100, 172
+        ext = '.png'
+        plot_from_data_storage(data_storage, title='before_norm', idx=idx1, ext=ext)
+        plot_from_data_storage(data_storage, title='before_norm', idx=idx2, ext=ext)
+
+        # normalization done in the original code
         normalize_data_storage(data_storage)
-    
+        print('1, max, min of mean: ', str(np.max(data_storage)), str(np.min(data_storage)))
+        plot_from_data_storage(data_storage, title='after_norm1', idx=idx1, ext=ext)
+        plot_from_data_storage(data_storage, title='after_norm1', idx=idx2, ext=ext)
+
+        # normalization by the training datas mean and
+        normalize_data_by_train(data_storage)
+        print('2, max, min of mean: ', str(np.max(data_storage)), str(np.min(data_storage)))
+        plot_from_data_storage(data_storage, title='after_norm2', idx=idx1, ext=ext)
+        plot_from_data_storage(data_storage, title='after_norm2', idx=idx2, ext=ext)
+        
+        plot_from_data_storage(truth_storage, title='mask', idx=idx1, ext=ext)
+        plot_from_data_storage(truth_storage, title='mask', idx=idx2, ext=ext)
+        plt.close('all')
+
     hdf5_file.close()
     return out_file
+
+# this function should not be here
+def plot_from_data_storage(data_storage, title, idx, ext = 'png'):
+    plt.imshow(data_storage[idx,0,:,:,70])
+    plt.savefig('../brats/imgs/'+title+'_idx'+str(idx)+ext)
 
 
 def open_data_file(filename, readwrite="r"):

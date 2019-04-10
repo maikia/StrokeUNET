@@ -90,7 +90,7 @@ def normalize_data_by_train(data_storage):
     # also change)
     from sklearn.preprocessing import StandardScaler
     import pandas as pd
-    training_list = pickle_load(os.path.abspath("training_ids.pkl")) # careful, normally not hardcoded
+    training_list = pickle_load(os.path.abspath("training_ids.pkl")) # careful, normally name of the datafile is not hardcoded
     scalar = StandardScaler()
 
     for index in range(data_storage.shape[0]):
@@ -99,15 +99,23 @@ def normalize_data_by_train(data_storage):
         # calculate mean and stds only of training data
         # take only training images
         if index in training_list:
-            img_shape = data.shape()
-            img_reshape = np.reshape(data.get_data(), 
-                            img_shape[0]*img_shape[1]*img_shape[2])
-            scalar.partial_fit([img_reshape])        
+            img_shape = data.shape
+            img_reshape = np.reshape(data, 
+                            img_shape[0]*img_shape[1]*img_shape[2]*img_shape[3])
+            scalar.partial_fit([img_reshape])  
+
+    imgs_mean = np.reshape(scalar.mean_, [img_shape[0], img_shape[1], img_shape[2], img_shape[3]]) 
+    imgs_std = np.reshape(scalar.scale_, [img_shape[0], img_shape[1], img_shape[2], img_shape[3]])      
+
+    plt.figure()
+    plt.imshow(imgs_mean[0,:,:,70])
 
     for index in range(data_storage.shape[0]):
         # noramlize all the images
-        data_storage[index] = normalize_data(data_storage[index], 
-                            scalar.mean_, scalar.scale_)
+        data_storage[index] = (data_storage[index] - imgs_mean)/imgs_std
+        plt.savefig('../brats/imgs/mean.png')
+
+
     return data_storage
 
 

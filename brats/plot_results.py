@@ -6,7 +6,7 @@ import nibabel as nib
 import numpy as np
 from pandas.plotting import scatter_matrix
 
-prediction_dir = '03_prediction'
+prediction_dir = 'prediction'
 ext = '.png'
 
 
@@ -26,5 +26,6 @@ plt.savefig(os.path.join(prediction_dir, 'dice_validation' + ext))
 
 scatter_matrix(df_sort, alpha=0.5, figsize=(6, 6), diagonal='kde')    
 plt.savefig(os.path.join(prediction_dir, 'scatter_matrix' + ext))
+print('saved images in dir: ', prediction_dir)
 
 plt.show()
