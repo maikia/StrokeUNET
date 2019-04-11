@@ -62,7 +62,7 @@ def add_data_to_storage(data_storage, truth_storage, affine_storage, subject_dat
 
 
 def write_data_to_file(training_data_files, out_file, image_shape, truth_dtype=np.uint8, subject_ids=None,
-                       normalize=False, crop=True):
+                       normalize=True, crop=True):
     """
     Takes in a set of training images and writes those images to an hdf5 file.
     :param training_data_files: List of tuples containing the training data files. The modalities should be listed in

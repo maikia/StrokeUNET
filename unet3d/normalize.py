@@ -105,17 +105,18 @@ def normalize_data_by_train(data_storage):
             scalar.partial_fit([img_reshape])  
 
     imgs_mean = np.reshape(scalar.mean_, [img_shape[0], img_shape[1], img_shape[2], img_shape[3]]) 
-    imgs_std = np.reshape(scalar.scale_, [img_shape[0], img_shape[1], img_shape[2], img_shape[3]])      
+    imgs_std = np.reshape(scalar.scale_, [img_shape[0], img_shape[1], img_shape[2], img_shape[3]]) 
 
-    plt.figure()
+    #imgs_mean2 = np.mean(data_storage[training_list,...],0) # another way to calculate mean
+
+    # temporarily plot. remove later   
+    import matplotlib.pyplot as plt
     plt.imshow(imgs_mean[0,:,:,70])
+    plt.savefig('../brats/imgs/overall_mean.png')
 
     for index in range(data_storage.shape[0]):
-        # noramlize all the images
+        # normalize all the images
         data_storage[index] = (data_storage[index] - imgs_mean)/imgs_std
-        plt.savefig('../brats/imgs/mean.png')
-
-
     return data_storage
 
 

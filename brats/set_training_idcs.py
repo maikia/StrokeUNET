@@ -1,5 +1,5 @@
 import os
-from unet3d.generator import get_validation_split, pickle_dump
+from unet3d.generator import get_validation_split, pickle_dump, pickle_load
 import tables
 
 # in the original unet code the training and validation indices are set within
@@ -16,8 +16,8 @@ def main():
     data_file_open = tables.open_file(data_file, "r")
     training_file = os.path.abspath("training_ids.pkl")
     validation_file = os.path.abspath("validation_ids.pkl")
-    overwrite = False
-    split_same = False
+    overwrite = True
+    split_same = True
 
     
     if split_same and overwrite == True:
@@ -28,7 +28,8 @@ def main():
                         overwrite=overwrite,
                         training_file=training_file,
                         validation_file=validation_file)
-        pickle_dump(training_list, validation_file)
+        pickle_dump(training_list[:10], validation_file)
+        pickle_dump(training_list[:10], training_file)
     else:
         # setting random validation split
         training_list, validation_list = get_validation_split(data_file_open,
@@ -37,6 +38,8 @@ def main():
                         training_file=training_file,
                         validation_file=validation_file)
 
+    training_list = pickle_load(training_file)
+    validation_list = pickle_load(validation_file)
     print('training:', training_list)
     print('validation:', validation_list)
     print('common:', set(training_list) & set(validation_list))
