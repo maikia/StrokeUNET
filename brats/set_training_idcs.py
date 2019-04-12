@@ -17,7 +17,7 @@ def main():
     training_file = os.path.abspath("training_ids.pkl")
     validation_file = os.path.abspath("validation_ids.pkl")
     overwrite = True
-    split_same = True
+    split_same = False
 
     
     if split_same and overwrite == True:
@@ -28,8 +28,8 @@ def main():
                         overwrite=overwrite,
                         training_file=training_file,
                         validation_file=validation_file)
-        pickle_dump(training_list[:10], validation_file)
-        pickle_dump(training_list[:10], training_file)
+        pickle_dump(training_list, validation_file)
+        pickle_dump(training_list, training_file)
     else:
         # setting random validation split
         training_list, validation_list = get_validation_split(data_file_open,
