@@ -26,7 +26,7 @@ def get_background_mask(in_folder, out_file, truth_name="GlistrBoost_ManuallyCor
     This function computes a common background mask for all of the data in a subject folder.
     :param in_folder: a subject folder from the BRATS dataset.
     :param out_file: an image containing a mask that is 1 where the image data for that subject contains the background.
-    :param truth_name: how the truth file is labeled int he subject folder
+    :param truth_name: how the truth file is labeled in the subject folder
     :return: the path to the out_file
     """
     background_image = None
@@ -145,6 +145,7 @@ def convert_stroke_data(stroke_folder='data/raw', #../../../stroke/data/images',
         out_folder='data/preprocessed'): #, overwrite =True):
     """
     Copies and renames the data files to run within this program settings
+    does not do any additional preprocessing to the images
     """
     # create data/preprocessed directory with files t1 and truth
     print('preprocessing: ', glob.glob(os.path.join(stroke_folder, "*")))
@@ -165,6 +166,15 @@ def convert_stroke_data(stroke_folder='data/raw', #../../../stroke/data/images',
 
                     out_file_mask = os.path.abspath(os.path.join(new_subject_folder, "truth.nii.gz"))
                     shutil.copy(truth_file, out_file_mask)
+
+def convert_healthy_data(healthy_folder='',
+    out_folder='data/preprocessed'):
+    """
+    Copies and renames the data files to run within this program settings
+    for the healthy set of mri images. For each scan it adds the mask of the given
+    size filled with 0s to signify no lesion
+    """
+    pass
 
 
 def get_stroke_image(subject_folder, subfolder='t01', name='t1'):
