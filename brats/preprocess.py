@@ -181,20 +181,30 @@ def convert_healthy_data(healthy_folder='../data/healthy',
     # create out folder if does not already exist
     if not os.path.exists(out_folder): 
                         os.makedirs(out_folder)
+
+    # create empty mask, same for all healthy patients
+    empty_mask = make_empty_mask(dim=[189,233,197]) # TODO: change to variable
+
     for subject_file in glob.glob(os.path.join(healthy_folder, "*")):
         subject = os.path.basename(subject_file)
         new_subject_dir = os.path.join(out_folder, subject.split('_',2)[1])
         if not os.path.exists(new_subject_dir): 
                         os.makedirs(new_subject_dir)
-        out_file_t1 = os.path.abspath(os.path.join(new_subject_dir, "t1.nii.gz"))
+        out_file_t1 = os.path.abspath(os.path.join(new_subject_dir, 
+                        "t1.nii.gz"))
 
         shutil.copy(subject_file, out_file_t1)
 
         # paste the mask with no lesion here
+        out_file_mask = os.path.abspath(os.path.join(new_subject_dir, 
+                        "truth.nii.gz"))
+        sitk.WriteImage(empty_mask, out_file_mask)
 
-    # paste it in the directory '3DUnetCNN/data/preprocessed/Healthy/
 
-    # 
+def make_empty_mask(dim=[189,233,197]):
+    array_mask = np.zeros([dim[0],dim[1],dim[2]])
+    empty_mask = sitk.GetImageFromArray(array_mask, isVector=False)
+    return empty_mask
 
 def get_stroke_image(subject_folder, subfolder='t01', name='t1'):
 
