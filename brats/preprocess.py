@@ -148,7 +148,7 @@ def convert_stroke_data(stroke_folder='data/raw', #../../../stroke/data/images',
     does not do any additional preprocessing to the images
     """
     # create data/preprocessed directory with files t1 and truth
-    print('preprocessing: ', glob.glob(os.path.join(stroke_folder, "*")))
+    print('preparing: ', glob.glob(os.path.join(stroke_folder, "*")))
     for site_folder in glob.glob(os.path.join(stroke_folder, "*")):
         if os.path.isdir(site_folder):
             for subject_folder in glob.glob(os.path.join(site_folder, "*")):
@@ -167,18 +167,40 @@ def convert_stroke_data(stroke_folder='data/raw', #../../../stroke/data/images',
                     out_file_mask = os.path.abspath(os.path.join(new_subject_folder, "truth.nii.gz"))
                     shutil.copy(truth_file, out_file_mask)
 
-def convert_healthy_data(healthy_folder='',
-    out_folder='data/preprocessed'):
+def convert_healthy_data(healthy_folder='../data/healthy',
+    out_folder='data/preprocessed/healthy'):
     """
     Copies and renames the data files to run within this program settings
     for the healthy set of mri images. For each scan it adds the mask of the given
     size filled with 0s to signify no lesion
+    It is assumed that the healthy patient files are named 
+    'sub_>number_t1_final<.nii.gz'
     """
-    pass
+    print('preparing: ', glob.glob(os.path.join(healthy_folder, "*")))
+    # copy the file + filename
+    # create out folder if does not already exist
+    if not os.path.exists(out_folder): 
+                        os.makedirs(out_folder)
+    for subject_file in glob.glob(os.path.join(healthy_folder, "*")):
+        subject = os.path.basename(subject_file)
+        new_subject_dir = os.path.join(out_folder, subject.split('_',2)[1])
+        if not os.path.exists(new_subject_dir): 
+                        os.makedirs(new_subject_dir)
+        out_file_t1 = os.path.abspath(os.path.join(new_subject_dir, "t1.nii.gz"))
 
+        shutil.copy(subject_file, out_file_t1)
+
+        # paste the mask with no lesion here
+
+    # paste it in the directory '3DUnetCNN/data/preprocessed/Healthy/
+
+    # 
 
 def get_stroke_image(subject_folder, subfolder='t01', name='t1'):
-    file_card = os.path.join(subject_folder, subfolder, "*" + name + "*.nii.gz")
+
+    file_card = os.path.join(subject_folder, subfolder, 
+                    "*" + name + "*.nii.gz")
+    
     try:
         return glob.glob(file_card)[0]
     except IndexError:
