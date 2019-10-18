@@ -30,9 +30,12 @@ def write_image_data_to_file(image_files, data_storage, truth_storage, image_sha
 
     # if later overwrite is set and the new training and validation set will be chosen
     # the mean of training images will be wrongly calculated
-    training_file = os.path.abspath("training_ids.pkl")
-    validation_file = os.path.abspath("validation_ids.pkl")
-    training_list = pickle_load(os.path.abspath("training_ids.pkl")) # careful, normally not hardcoded
+    #training_file = os.path.abspath("training_ids.pkl")
+    #validation_file = os.path.abspath("validation_ids.pkl")
+    try:
+        training_list = pickle_load(os.path.abspath("training_ids.pkl")) # careful, normally not hardcoded
+    except:
+        import pdb; pdb.set_trace()
 
     for idx, set_of_files in enumerate(image_files):
         # create reference .csv file
@@ -78,6 +81,7 @@ def write_data_to_file(training_data_files, out_file, image_shape, truth_dtype=n
     n_channels = len(training_data_files[0]) - 1
 
     try:
+        # initiates .h5 file
         hdf5_file, data_storage, truth_storage, affine_storage = create_data_file(out_file,
                                                                                   n_channels=n_channels,
                                                                                   n_samples=n_samples,
@@ -91,34 +95,48 @@ def write_data_to_file(training_data_files, out_file, image_shape, truth_dtype=n
     if subject_ids:
         hdf5_file.create_array(hdf5_file.root, 'subject_ids', obj=subject_ids)
     if normalize:
-        idx1, idx2 = 100, 172
+        idx1, idx2 = 100, 256
         ext = '.png'
-        plot_from_data_storage(data_storage, title='before_norm', idx=idx1, ext=ext)
-        plot_from_data_storage(data_storage, title='before_norm', idx=idx2, ext=ext)
+        imgs_dir='../brats/imgs'
+        if not os.path.exists(imgs_dir): 
+                        os.makedirs(imgs_dir)
+        plot_from_data_storage(data_storage, title='before_norm', idx=idx1, 
+                            ext=ext, imgs_dir=imgs_dir)
+        plot_from_data_storage(data_storage, title='before_norm', idx=idx2, 
+                            ext=ext, imgs_dir=imgs_dir)
 
         # normalization done in the original code
         normalize_data_storage(data_storage)
         print('1, max, min of mean: ', str(np.max(data_storage)), str(np.min(data_storage)))
-        plot_from_data_storage(data_storage, title='after_norm1', idx=idx1, ext=ext)
-        plot_from_data_storage(data_storage, title='after_norm1', idx=idx2, ext=ext)
+        plot_from_data_storage(data_storage, title='after_norm1', idx=idx1, 
+                                ext=ext, imgs_dir=imgs_dir)
+        plot_from_data_storage(data_storage, title='after_norm1', idx=idx2, 
+                                ext=ext, imgs_dir=imgs_dir)
 
         # normalization by the training datas mean and
         normalize_data_by_train(data_storage)
         print('2, max, min of mean: ', str(np.max(data_storage)), str(np.min(data_storage)))
-        plot_from_data_storage(data_storage, title='after_norm2', idx=idx1, ext=ext)
-        plot_from_data_storage(data_storage, title='after_norm2', idx=idx2, ext=ext)
+        plot_from_data_storage(data_storage, title='after_norm2', idx=idx1, 
+                                ext=ext, imgs_dir=imgs_dir)
+        plot_from_data_storage(data_storage, title='after_norm2', idx=idx2, 
+                                ext=ext, imgs_dir=imgs_dir)
         
-        plot_from_data_storage(truth_storage, title='mask', idx=idx1, ext=ext)
-        plot_from_data_storage(truth_storage, title='mask', idx=idx2, ext=ext)
+        plot_from_data_storage(truth_storage, title='mask', idx=idx1, 
+                                ext=ext, imgs_dir=imgs_dir)
+        plot_from_data_storage(truth_storage, title='mask', idx=idx2, 
+                                ext=ext, imgs_dir=imgs_dir)
         plt.close('all')
 
     hdf5_file.close()
     return out_file
 
 # this function should not be here
-def plot_from_data_storage(data_storage, title, idx, ext = 'png'):
+def plot_from_data_storage(data_storage, title, idx, ext = 'png',
+                        imgs_dir='../brats/imgs'):
     plt.imshow(data_storage[idx,0,:,:,70])
-    plt.savefig('../brats/imgs/'+title+'_idx'+str(idx)+ext)
+    file_name = title+'_idx'+str(idx)+ext
+    file_path = os.path.join(imgs_dir, file_name)
+    plt.savefig(file_path)
 
 
 def open_data_file(filename, readwrite="r"):

@@ -2,7 +2,7 @@ import glob
 
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 from unet3d.data import write_data_to_file, open_data_file
 from unet3d.generator import get_training_and_validation_generators
@@ -49,6 +49,9 @@ config["overwrite"] = True # False  # If True, will previous files. If False, wi
 
 
 def fetch_training_data_files():
+    # TODO: set_training_idcs also does this. To be sure idcs stay the same it should 
+    # take list of files saved by set_training_idcs.py instead of reading them
+    # separately
     training_data_files = list()
     for subject_dir in glob.glob(os.path.join(os.path.dirname(__file__), "data", "preprocessed", "*", "*")):
         print(subject_dir)
@@ -103,8 +106,6 @@ def main(overwrite=False):
         skip_blank=config["skip_blank"],
         augment_flip=config["flip"],
         augment_distortion_factor=config["distort"])
-
-
     # normalize the dataset if required
     # use only the training img (training_keys_file)
     fetch_training_data_files()
