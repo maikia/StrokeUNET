@@ -1,5 +1,6 @@
+import glob
 import os
-from unet3d.generator import get_validation_split, pickle_dump, pickle_load
+from unet3d.generator import pickle_dump, pickle_load, split_list #get_validation_split
 import tables
 
 # in the original unet code the training and validation indices are set within
@@ -12,31 +13,36 @@ import tables
 # to reset training and validation set
 
 def main():
-    data_file = os.path.abspath("brats_data.h5")
-    data_file_open = tables.open_file(data_file, "r")
+    #data_file = os.path.abspath("brats_data.h5")
+    #data_file_open = tables.open_file(data_file, "r")
     training_file = os.path.abspath("training_ids.pkl")
     validation_file = os.path.abspath("validation_ids.pkl")
     overwrite = True
     split_same = False
 
+    # get all the available data files
+    data_files = list()
+    for subject_dir in glob.glob(os.path.join(os.path.dirname(__file__), "data", "preprocessed", "*", "*")):
+        print(subject_dir)
+        subject_files = list()
+        for modality in ["t1"] + ["truth"]:
+            subject_files.append(os.path.join(subject_dir, modality + ".nii.gz"))
+        data_files.append(tuple(subject_files))
     
-    if split_same and overwrite == True:
-        # set training and validation to be the same (don't use it for real, just for
-        # testing purposes)
-        training_list, validation_list = get_validation_split(data_file_open,
-                        data_split=0.5,
-                        overwrite=overwrite,
-                        training_file=training_file,
-                        validation_file=validation_file)
-        pickle_dump(training_list, validation_file)
+    if overwrite:
+        sample_list = list(range(len(data_files)))
+
+        if split_same:
+            # set training and validation to be the same (don't use it for real, just for
+            # testing purposes)
+            split = 0.5
+        else:
+            split = 0.8
+
+        sample_list = list(range(len(data_files)))
+        training_list, validation_list = split_list(sample_list, split=split)
         pickle_dump(training_list, training_file)
-    else:
-        # setting random validation split
-        training_list, validation_list = get_validation_split(data_file_open,
-                        data_split=0.8,
-                        overwrite=overwrite,
-                        training_file=training_file,
-                        validation_file=validation_file)
+        pickle_dump(validation_list, validation_file)
 
     training_list = pickle_load(training_file)
     validation_list = pickle_load(validation_file)
@@ -46,7 +52,6 @@ def main():
     print('len training, validation', len(training_list), len(validation_list))
     print('len common:', len(set(training_list) & set(validation_list)))
     return training_list, validation_list
-
 
 if __name__ == "__main__":
     main()
