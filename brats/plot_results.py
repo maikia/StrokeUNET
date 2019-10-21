@@ -12,7 +12,7 @@ import matplotlib.animation as animation
 import numpy as np
 from pylab import *
 
-prediction_dir = '04_prediction_whole_img'
+prediction_dir = 'prediction' #'04_prediction_whole_img'
 ext = '.png'
 
 
@@ -30,8 +30,9 @@ plt.plot(df_sort['DiceCoeff'],df_sort['Unnamed: 0'], "o", ms = 6) #, columns=lis
 plt.title('Dice validation')
 plt.savefig(os.path.join(prediction_dir, 'dice_validation' + ext))
 
-scatter_matrix(df_sort, alpha=0.5, figsize=(6, 6), diagonal='kde')    
-plt.savefig(os.path.join(prediction_dir, 'scatter_matrix' + ext))
+if len(np.unique(df_sort['PredictSize'])) > 1:
+    scatter_matrix(df_sort, alpha=0.5, figsize=(6, 6), diagonal='kde')    
+    plt.savefig(os.path.join(prediction_dir, 'scatter_matrix' + ext))
 
 
 # plot exemplar prediction set
@@ -53,7 +54,7 @@ def draw_image_masks(brain_img, true_mask,
 
 
 plt.figure()
-validation_dir = 'validation_case_199'
+validation_dir = 'validation_case_365'
 idx = 70
 
 val_dir = os.path.join(prediction_dir, validation_dir)
@@ -68,7 +69,7 @@ draw_image_masks(brain_img[:,:,idx], true_mask[:,:,idx],
 plt.savefig(os.path.join(prediction_dir, validation_dir+'_mask_example' + ext))
 
     # make a movie
-def ani_frame(prediction_dir, validation_dir = 'validation_case_199'):
+def ani_frame(prediction_dir, validation_dir = 'validation_case_365'):
     dpi = 100
     fig = plt.figure()
     ax = fig.add_subplot(111)
