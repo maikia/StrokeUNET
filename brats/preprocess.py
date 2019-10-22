@@ -141,11 +141,11 @@ def convert_brats_folder(in_folder, out_folder, truth_name='seg', no_bias_correc
     shutil.copy(truth_file, out_file)
     check_origin(out_file, get_image(in_folder, config["all_modalities"][0]))
 
-def convert_stroke_data(stroke_folder='data/raw', #../../../stroke/data/images', 
+def convert_stroke_data(stroke_folder='../data/ATLAS_R1.1/',#data/raw', #../../../stroke/data/images', 
         out_folder='data/preprocessed'): #, overwrite =True):
     """
     Copies and renames the data files to run within this program settings
-    does not do any additional preprocessing to the images
+    it also changes all the nonzero values in the mask to 1
     """
     # create data/preprocessed directory with files t1 and truth
     print('preparing: ', glob.glob(os.path.join(stroke_folder, "*")))
@@ -164,8 +164,18 @@ def convert_stroke_data(stroke_folder='data/raw', #../../../stroke/data/images',
                     out_file_t1 = os.path.abspath(os.path.join(new_subject_folder, "t1.nii.gz"))
                     shutil.copy(image_file, out_file_t1)
 
-                    out_file_mask = os.path.abspath(os.path.join(new_subject_folder, "truth.nii.gz"))
-                    shutil.copy(truth_file, out_file_mask)
+                    out_file_path = os.path.abspath(os.path.join(new_subject_folder, "truth.nii.gz"))
+                    #shutil.copy(truth_file, out_file_mask) # only copies the mask
+
+                    # set all of the positive values in the mask to 1
+                    
+                    truth_image = sitk.ReadImage(truth_file)
+                    truth_array = sitk.GetArrayFromImage(truth_image)
+                    #print(np.unique(truth_array))
+                    truth_array[truth_array > 0] = 1
+                    truth_mask = sitk.GetImageFromArray(truth_array, isVector=False)
+                    sitk.WriteImage(truth_mask, out_file_path)
+
 
 def convert_healthy_data(healthy_folder='../data/healthy',
     out_folder='data/preprocessed/healthy'):
