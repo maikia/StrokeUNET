@@ -11,7 +11,7 @@ from unet3d.training import load_old_model, train_model
 
 config = dict()
 config["pool_size"] = (2, 2, 2)  # pool size for the max pooling operations
-config["image_shape"] = (144, 144, 144)  # This determines what shape the images will be cropped/resampled to.
+config["image_shape"] = (144, 144, 144)  # (197, 233, 189) #This determines what shape the images will be cropped/resampled to.
 config["patch_shape"] = (64, 64, 64)  # switch to None to train on the whole image
 config["labels"] = (1)  # the label numbers on the input image
 config["n_labels"] = 1 #len(config["labels"])

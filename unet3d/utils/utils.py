@@ -54,13 +54,41 @@ def read_image(in_file, image_shape=None, interpolation='linear', crop=None):
     print("Reading: {0}".format(in_file))
     image = nib.load(os.path.abspath(in_file))
     image = fix_shape(image)
+    '''
+    if in_file[-12:] == 'truth.nii.gz' and np.sum(image.get_data()) > 0:
+        import matplotlib.pylab as plt
+        plt.figure()
+        plt.imshow(image.get_data()[:,:,72])
+        plt.savefig('temp_temp_1.png')      
+    elif not(in_file[-12:] == 'truth.nii.gz'):
+        import matplotlib.pylab as plt
+        plt.figure()
+        plt.imshow(image.get_data()[:,:,72])
+        plt.savefig('temp_brain_1.png')
+        plt.close('all')
+    '''
     if crop:
         image = crop_img_to(image, crop, copy=True)
     if image_shape:
-        return resize(image, new_shape=image_shape, interpolation=interpolation)
-    else:
-        return image
-
+        image = resize(image, new_shape=image_shape, interpolation=interpolation)
+    #else:
+    #    return image
+    '''
+    if crop or image_shape:
+        if in_file[-12:] == 'truth.nii.gz' and np.sum(image.get_data()) > 0:
+            import matplotlib.pylab as plt
+            plt.figure()
+            plt.imshow(image.get_data()[:,:,72])
+            plt.savefig('temp_mask_2.png')
+            import pdb; pdb.set_trace()        
+        elif not(in_file[-12:] == 'truth.nii.gz'):
+            import matplotlib.pylab as plt
+            plt.figure()
+            plt.imshow(image.get_data()[:,:,72])
+            plt.savefig('temp_brain_2.png')
+            plt.close('all')
+    '''
+    return image
 
 def fix_shape(image):
     if image.shape[-1] == 1:
@@ -69,7 +97,7 @@ def fix_shape(image):
 
 
 def resize(image, new_shape, interpolation="linear"):
-    image = reorder_img(image, resample=interpolation)
+    #image = reorder_img(image, resample=interpolation) # the image is transposed (??)
     zoom_level = np.divide(new_shape, image.shape)
     new_spacing = np.divide(image.header.get_zooms(), zoom_level)
     new_data = resample_to_spacing(image.get_data(), image.header.get_zooms(), new_spacing,
