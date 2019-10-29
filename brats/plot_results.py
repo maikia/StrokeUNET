@@ -10,9 +10,10 @@ import matplotlib.cm as cm
 
 import matplotlib.animation as animation
 import numpy as np
-from pylab import *
+#from pylab import *
 
 prediction_dir = 'prediction' #'04_prediction_whole_img'
+#image_dir = ''
 ext = '.png'
 
 
@@ -34,6 +35,65 @@ if len(np.unique(df_sort['PredictSize'])) > 1:
     scatter_matrix(df_sort, alpha=0.5, figsize=(6, 6), diagonal='kde')    
     plt.savefig(os.path.join(prediction_dir, 'scatter_matrix' + ext))
 
+
+def draw_all_images(prediction_dir, brain_depth=72, ext='.png'):
+    """
+    prediction_dir:
+    brain_depth: at which pxl depth the image of the brain will be drawn
+    """
+    # get all the validation dirs
+    dir_iterator = next(os.walk(prediction_dir))[1]
+    my_cmap_predict = cm.jet
+    my_cmap_predict.set_under('k', alpha=0)
+    my_cmap_true = cm.PiYG
+    my_cmap_true.set_under('k', alpha=0)
+
+    for val_dir in dir_iterator:
+        path_prediction = os.path.join(prediction_dir, val_dir)
+        path_img_save = os.path.join(prediction_dir, val_dir)
+
+        path_t1 = os.path.join(val_dir, 'data_t1.nii.gz')
+        path_true = os.path.join(val_dir, 'truth.nii.gz')
+        path_predict = os.path.join(val_dir, 'prediction.nii.gz')
+
+        # save image
+        brain_img = load_img(path_t1).get_data()[:,:,brain_depth]
+        validation_case = val_dir.split("_")[-1]
+
+        # brain image
+        plt.figure()
+        plt.subplot(1,1,1)
+        plt.imshow(brain_img, cmap='Greys')
+        plt.title('validation_case: '+ validation_case)
+        brain_name = os.path.join(path_img_save, 'the_brain'+ext)
+        plt.savefig(brain_name)
+
+        # brain image with mask
+        mask_image = load_img(path_true).get_data()
+        mask_at_depth = mask_image[:,:,brain_depth]
+        #mask_image_all = 
+        im = plt.imshow(mask_image, cmap=my_cmap_true, 
+            interpolation='none', 
+            clim=[0.9, 1], alpha = 0.5)
+        plt.title('lesion size: '+ validation_case)
+        truth_name = os.path.join(path_img_save, 'truth_on_brain'+ext)
+        plt.savefig(truth_name)
+
+
+
+        plt.close("all")
+
+    # draw brain with truth mask
+    # title: lesion, pixel size: <path to the file>
+
+    # draw brain with predicted mask
+    # title: predicted lesion, pixel size:
+
+    # draw mask overlap
+    # title size of overlap:, score:
+
+def make_tex_code_to_present_predicted_results():
+    pass
 
 # plot exemplar prediction set
 def draw_image_masks(brain_img, true_mask, 
@@ -110,5 +170,9 @@ def ani_frame(prediction_dir, validation_dir = 'validation_case_365'):
 
 # make a movie
 #ani_frame(prediction_dir=prediction_dir, validation_dir=validation_dir)
+
+#draw_all_images(prediction_dir, brain_depth=100, ext='.png')
+
 print('saved images in dir: ', prediction_dir)
+
 plt.show()

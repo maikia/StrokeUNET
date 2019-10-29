@@ -39,7 +39,7 @@ config["distort"] = None  # switch to None if you want no distortion
 config["augment"] = False ###config["flip"] or config["distort"]
 config["validation_patch_overlap"] = 0  # if > 0, during training, validation patches will be overlapping
 config["training_patch_start_offset"] = (16, 16, 16)  # randomly offset the first patch index by up to this offset
-config["skip_blank"] = False  # if True, then patches without any target will be skipped
+config["skip_blank"] = True  # if True, then patches without any target will be skipped
 
 config["data_file"] = os.path.abspath("brats_data.h5")
 config["model_file"] = os.path.abspath("tumor_segmentation_model.h5")

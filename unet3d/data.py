@@ -62,6 +62,16 @@ def add_data_to_storage(data_storage, truth_storage, affine_storage, subject_dat
     data_storage.append(np.asarray(subject_data[:n_channels])[np.newaxis])
     truth_storage.append(np.asarray(subject_data[n_channels], dtype=truth_dtype)[np.newaxis][np.newaxis])
     affine_storage.append(np.asarray(affine)[np.newaxis])
+    '''
+    if np.sum(np.asarray(subject_data[1:])[0,:,:,72]) > 0:
+        plt.figure()
+        plt.subplot(1,2,2)
+        plt.imshow(np.asarray(subject_data[n_channels])[:,:,72])#, dtype=truth_dtype)[:,:,72])
+        plt.subplot(1,2,1)
+        plt.imshow(np.asarray(subject_data[:n_channels])[np.newaxis][0,0,:,:,72])
+        plt.savefig('temp.png')
+        import pdb; pdb.set_trace()
+    '''
 
 
 def write_data_to_file(training_data_files, out_file, image_shape, truth_dtype=np.uint8, subject_ids=None,
@@ -113,6 +123,7 @@ def write_data_to_file(training_data_files, out_file, image_shape, truth_dtype=n
         plot_from_data_storage(data_storage, title='after_norm1', idx=idx2, 
                                 ext=ext, imgs_dir=imgs_dir)
 
+        
         # normalization by the training datas mean and
         normalize_data_by_train(data_storage)
         print('2, max, min of mean: ', str(np.max(data_storage)), str(np.min(data_storage)))
@@ -125,6 +136,7 @@ def write_data_to_file(training_data_files, out_file, image_shape, truth_dtype=n
                                 ext=ext, imgs_dir=imgs_dir)
         plot_from_data_storage(truth_storage, title='mask', idx=idx2, 
                                 ext=ext, imgs_dir=imgs_dir)
+        
         plt.close('all')
 
     hdf5_file.close()
