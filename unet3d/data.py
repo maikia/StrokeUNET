@@ -123,7 +123,7 @@ def write_data_to_file(training_data_files, out_file, image_shape, truth_dtype=n
         plot_from_data_storage(data_storage, title='after_norm1', idx=idx2, 
                                 ext=ext, imgs_dir=imgs_dir)
 
-        
+        '''
         # normalization by the training datas mean and
         normalize_data_by_train(data_storage)
         print('2, max, min of mean: ', str(np.max(data_storage)), str(np.min(data_storage)))
@@ -136,7 +136,7 @@ def write_data_to_file(training_data_files, out_file, image_shape, truth_dtype=n
                                 ext=ext, imgs_dir=imgs_dir)
         plot_from_data_storage(truth_storage, title='mask', idx=idx2, 
                                 ext=ext, imgs_dir=imgs_dir)
-        
+        '''
         plt.close('all')
 
     hdf5_file.close()

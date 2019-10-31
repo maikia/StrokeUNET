@@ -52,7 +52,7 @@ def main():
     for index, score in enumerate(df.columns):
         values = df.values.T[index]
         scores[score] = values[np.isnan(values) == False]
-
+    plt.figure()
     plt.boxplot(list(scores.values()), labels=list(scores.keys()))
     plt.ylabel("Dice Coefficient")
     plt.savefig("validation_scores_boxplot.png")
@@ -60,7 +60,7 @@ def main():
 
     if os.path.exists("./training.log"):
         training_df = pd.read_csv("./training.log").set_index('epoch')
-
+        plt.figure()
         plt.plot(training_df['loss'].values, label='training loss')
         plt.plot(training_df['val_loss'].values, label='validation loss')
         plt.ylabel('Loss')
