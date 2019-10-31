@@ -10,8 +10,15 @@ from keras import backend as K
 def dice_coefficient(y_true, y_pred, smooth=1.):
     y_true_f = K.flatten(y_true)
     y_pred_f = K.flatten(y_pred)
+
     intersection = K.sum(y_true_f * y_pred_f)
-    return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
+
+    dice = (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
+    
+    #loss = K.mean(K.binary_crossentropy(y_true, y_pred), axis=-1)
+    condition1 = K.greater(K.sum(y_true), 0)
+    condition2 = K.greater(K.sum(y_pred), 0)
+    return K.switch(condition1, dice, K.switch(condition2, K.ones_like(dice), K.zeros_like(dice)))
 
 
 def dice_coefficient_loss(y_true, y_pred):
