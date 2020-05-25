@@ -25,8 +25,10 @@ plt.title('Dice score for stroke data')
 plt.savefig(os.path.join(prediction_dir, 'dice_coef_hist' + ext))
 
 # plot image
-plt.figure()
+plt.figure(figsize=(10,20))
+
 df_sort = df.sort_values(by=['DiceCoeff'])
+#plt.rc('ytick', labelsize=2) 
 plt.plot(df_sort['DiceCoeff'],df_sort['Unnamed: 0'], "o", ms = 6) #, columns=list('ABCD'))
 plt.title('Dice validation')
 plt.savefig(os.path.join(prediction_dir, 'dice_validation' + ext))

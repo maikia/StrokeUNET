@@ -21,6 +21,12 @@ def get_enhancing_tumor_mask(data):
 
 
 def dice_coefficient(truth, prediction):
+    if np.sum(truth) == 0:
+        # if true mask should be 0 and is 0, dice will be 1
+        if np.sum(prediction) == 0:
+            return 1.
+        else:
+            return 0
     return 2 * np.sum(truth * prediction)/(np.sum(truth) + np.sum(prediction))
 
 
