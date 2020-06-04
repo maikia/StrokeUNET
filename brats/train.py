@@ -45,11 +45,11 @@ config["data_file"] = os.path.abspath("brats_data.h5")
 config["model_file"] = os.path.abspath("tumor_segmentation_model.h5")
 config["training_file"] = os.path.abspath("training_ids.pkl")
 config["validation_file"] = os.path.abspath("validation_ids.pkl")
-config["overwrite"] = True # False  # If True, will previous files. If False, will use previously written files.
+config["overwrite"] = False  # If True, will previous files. If False, will use previously written files.
 
 
 def fetch_training_data_files():
-    # TODO: set_training_idcs also does this. To be sure idcs stay the same it should 
+    # TODO: set_training_idcs also does this. To be sure idcs stay the same it should
     # take list of files saved by set_training_idcs.py instead of reading them
     # separately
     training_data_files = list()
@@ -69,7 +69,7 @@ def main(overwrite=False):
     if overwrite or not os.path.exists(config["data_file"]):
         training_files = fetch_training_data_files()
         try:
-            write_data_to_file(training_files, config["data_file"], 
+            write_data_to_file(training_files, config["data_file"],
                 image_shape=config["image_shape"]) #, normalize=False)
         except:
             import pdb; pdb.set_trace()

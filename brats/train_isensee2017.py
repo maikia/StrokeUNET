@@ -1,4 +1,6 @@
 import os
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 import glob
 
 from unet3d.data import write_data_to_file, open_data_file
@@ -43,7 +45,7 @@ config["data_file"] = os.path.abspath("brats_data.h5")
 config["model_file"] = os.path.abspath("tumor_segmentation_model.h5")#os.path.abspath("isensee_2017_model.h5")
 config["training_file"] = os.path.abspath("training_ids.pkl") #("isensee_training_ids.pkl")
 config["validation_file"] = os.path.abspath("validation_ids.pkl") #("isensee_validation_ids.pkl")
-config["overwrite"] = True  # If True, will previous files. If False, will use previously written files.
+config["overwrite"] = False  # If True, will previous files. If False, will use previously written files.
 
 
 def fetch_training_data_files(return_subject_ids=False):

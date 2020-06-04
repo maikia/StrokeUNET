@@ -13,7 +13,8 @@ from unet3d.metrics import (dice_coefficient, dice_coefficient_loss, dice_coef, 
                             weighted_dice_coefficient_loss, weighted_dice_coefficient)
 
 # K.set_image_dim_ordering('th')
-K.set_image_data_format('channels_first')
+# K.set_image_data_format('channels_first')
+K.common.set_image_dim_ordering('th')
 
 # learning rate schedule
 def step_decay(epoch, initial_lrate, drop, epochs_drop):
@@ -77,7 +78,7 @@ def train_model(model, model_file, training_generator, validation_generator, ste
     :param learning_rate_drop: How much at which to the learning rate will decay.
     :param learning_rate_epochs: Number of epochs after which the learning rate will drop.
     :param n_epochs: Total number of epochs to train the model.
-    :return: 
+    :return:
     """
     print(validation_steps)
     model.fit_generator(generator=training_generator,
