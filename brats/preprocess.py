@@ -109,7 +109,7 @@ def convert_stroke_data(stroke_folder='../data/ATLAS_R1.1/',#data/raw', #../../.
 
                     out_file_t1 = os.path.abspath(os.path.join(new_subject_folder, "t1.nii.gz"))
                     shutil.copy(image_file, out_file_t1)
-
+                    import pdb; pdb.set_trace()
                     out_file_path = os.path.abspath(os.path.join(new_subject_folder, "truth.nii.gz"))
                     #shutil.copy(truth_file, out_file_mask) # only copies the mask
 
@@ -184,6 +184,10 @@ def get_stroke_image(subject_folder, subfolder='t01', name='t1'):
 
 
 if __name__ == "__main__":
-    data_dir = ''
-    healthy_data_dir = ''
-    output_data_dir = ''
+    # TODO: add new data, '../BIDS_lesions_zip', format it correctly, check if
+    # usable
+    # TODO: look at all the data, all the scans if they look alright
+    data_dir = '../data/ATLAS_R1.1/'
+    healthy_data_dir = '../data/healthy'
+
+    output_data_dir = 'data/preprocessed/'
