@@ -53,7 +53,9 @@ def fetch_training_data_files():
     # take list of files saved by set_training_idcs.py instead of reading them
     # separately
     training_data_files = list()
-    for subject_dir in glob.glob(os.path.join(os.path.dirname(__file__), "data", "preprocessed", "*", "*")):
+    # for subject_dir in glob.glob(os.path.join(os.path.dirname(__file__),
+    # "data", "preprocessed", "*", "*")):
+    for subject_dir in glob.glob(os.path.join(os.path.dirname(__file__), 'data', "preprocessed", "*", "*")):
         print(subject_dir)
         subject_files = list()
         for modality in config["training_modalities"] + ["truth"]:
@@ -68,11 +70,11 @@ def main(overwrite=False):
     print('path: ', os.path.exists(config["data_file"]))
     if overwrite or not os.path.exists(config["data_file"]):
         training_files = fetch_training_data_files()
-        try:
-            write_data_to_file(training_files, config["data_file"],
-                image_shape=config["image_shape"]) #, normalize=False)
-        except:
-            import pdb; pdb.set_trace()
+        # try:
+        write_data_to_file(training_files, config["data_file"],
+                           image_shape=config["image_shape"]) #, normalize=False)
+        # except:
+        #    import pdb; pdb.set_trace()
     data_file_opened = open_data_file(config["data_file"])
 
     if not overwrite and os.path.exists(config["model_file"]):
@@ -84,7 +86,7 @@ def main(overwrite=False):
                               n_labels=config["n_labels"],
                               initial_learning_rate=config["initial_learning_rate"],
                               deconvolution=config["deconvolution"])
-
+        print(model.summary())
     # get training and testing generators
     train_generator, validation_generator, n_train_steps, n_validation_steps = get_training_and_validation_generators(
         data_file_opened,
