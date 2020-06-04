@@ -76,51 +76,72 @@ def normalize_image(in_file, out_file, bias_correction=True):
     return out_file
 
 
-def convert_stroke_data(stroke_folder='../data/ATLAS_R1.1/',#data/raw', #../../../stroke/data/images', 
-        out_folder='data/preprocessed'): #, overwrite =True):
+def convert_stroke_data(stroke_folder='../data/ATLAS_R1.1/',
+                        out_folder='data/preprocessed'):
     """
-    TODO: correct the doc
-    Preprocesses the BRATS data and writes it to a given output folder. Assumes the original folder structure.
-    :param brats_folder: folder containing the original brats data
-    :param out_folder: output folder to which the preprocessed data will be written
-    :param overwrite: set to True in order to redo all the preprocessing
-    :param no_bias_correction_modalities: performing bias correction could reduce the signal of certain modalities. If
-    concerned about a reduction in signal for a specific modality, specify by including the given modality in a list
-    or tuple.
-    :return:
-    """
-    """
+    # TODO: find better way of storing the raw data
     Copies and renames the data files to run within this program settings
     it also changes all the nonzero values in the mask to 1
+
+    The data and writes it to a given output folder.
+    :param stroke_folder: folder containing the data with the following format:
+                          |-stroke_folder
+                            |_ Site1
+                                |_ <subject_name1>
+                                    |_t01
+                                        |_<subject_name1>_t1....nii.gz
+                                        |_<subject_name1>_LesionSmooth...nii.gz
+    Note: there might be multiple folders at each level.
+    Note2: there might be more than one mask stored in
+    separate files. All the masks will be collapsed into a single one and each
+    mask will be marked with 1. So the output image masks will always consist
+    only of [0, 1]s
+    :param out_folder: output folder to which the preprocessed data will be
+                       written
     """
     # create data/preprocessed directory with files t1 and truth
-    print('preparing: ', glob.glob(os.path.join(stroke_folder, "*")))
-    for site_folder in glob.glob(os.path.join(stroke_folder, "*")):
-        if os.path.isdir(site_folder):
-            for subject_folder in glob.glob(os.path.join(site_folder, "*")):
-                if os.path.isdir(subject_folder):
-                    subject = os.path.basename(subject_folder)
-                    new_subject_folder = os.path.join(out_folder, os.path.basename(os.path.dirname(subject_folder)),
-                                              subject)
-                    if not os.path.exists(new_subject_folder):
-                        os.makedirs(new_subject_folder)
-                    image_file = get_stroke_image(subject_folder)
-                    truth_file = get_stroke_image(subject_folder, name='LesionSmooth_stx')
+    site_dirs = glob.glob(os.path.join(stroke_folder, "*"))
+    site_dirs = [site_dir for site_dir in site_dirs if os.path.isdir(site_dir)]
+    files = i
+    print('preparing: ', site_dirs)
+    print('found {} site directories'.format(len(site_dirs)))
+    for site_dir in site_dirs:
+        subj_dirs = glob.glob(os.path.join(site_dir, "*"))
+        subj_dirs = [subj_dir for subj_dir in subj_dirs if
+                     os.path.isdir(subj_dir)]
+        site = site_dir.split('/')[-1]
+        print('found {} subject directories in {}'.format(len(subj_dirs),
+                                                          site))
+        for subj_dir in subj_dirs:
+            # subject name
+            subject = os.path.basename(subj_dir)
+            new_subj_dir = os.path.join(out_folder, subject)
+            if not os.path.exists(new_subj_dir):
+                os.makedirs(new_subj_dir)
 
-                    out_file_t1 = os.path.abspath(os.path.join(new_subject_folder, "t1.nii.gz"))
-                    shutil.copy(image_file, out_file_t1)
-                    import pdb; pdb.set_trace()
-                    out_file_path = os.path.abspath(os.path.join(new_subject_folder, "truth.nii.gz"))
-                    #shutil.copy(truth_file, out_file_mask) # only copies the mask
+            # copy the true image
+            out_file_t1 = os.path.abspath(os.path.join(new_subj_dir,
+                                                       "t1.nii.gz"))
+            mri_file = get_stroke_image(subj_dir)
+            shutil.copy(mri_file, out_file_t1)
 
-                    # set all of the positive values in the mask to 1
+            # mask
+            # TODO: add other lesions and lesion images if there are more
+            # eg, multiple lesion: site1, 031768
+            truth_file = get_stroke_image(subj_dir, name='LesionSmooth_stx')
+            out_file_path = os.path.abspath(os.path.join(new_subj_dir,
+                                                         "truth.nii.gz"))
 
-                    truth_image = sitk.ReadImage(truth_file)
-                    truth_array = sitk.GetArrayFromImage(truth_image)
-                    #print(np.unique(truth_array))
-                    truth_array[truth_array > 0] = 1
-                    truth_mask = sitk.GetImageFromArray(truth_array, isVector=False)
-                    sitk.WriteImage(truth_mask, out_file_path)
+            # set all of the positive values in the mask to 1
+            truth_image = sitk.ReadImage(truth_file)
+            truth_array = sitk.GetArrayFromImage(truth_image)
+            truth_array[truth_array > 0] = 1
+
+            truth_mask = sitk.GetImageFromArray(truth_array, isVector=False)
+            sitk.WriteImage(truth_mask, out_file_path)
+
+            files += 1
+    print('Copied data for {} subjects'.format(files))
 
 
 def convert_healthy_data(healthy_folder='../data/healthy',
@@ -174,7 +195,7 @@ def make_empty_mask(dim=[189,233,197]):
     return empty_mask
 
 def get_stroke_image(subject_folder, subfolder='t01', name='t1'):
-
+    # TODO: check, add the doc
     file_card = os.path.join(subject_folder, subfolder, 
                     "*" + name + "*.nii.gz")
     try:
@@ -187,7 +208,11 @@ if __name__ == "__main__":
     # TODO: add new data, '../BIDS_lesions_zip', format it correctly, check if
     # usable
     # TODO: look at all the data, all the scans if they look alright
-    data_dir = '../data/ATLAS_R1.1/'
-    healthy_data_dir = '../data/healthy'
+    data_dir = '../../data/ATLAS_R1.1/'
+    healthy_data_dir = '../../data/healthy'
 
     output_data_dir = 'data/preprocessed/'
+
+    convert_stroke_data(stroke_folder=data_dir, out_folder=output_data_dir)
+
+
