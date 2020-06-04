@@ -6,7 +6,8 @@ from keras.optimizers import Adam
 
 from unet3d.metrics import dice_coefficient_loss, get_label_dice_coefficient_function, dice_coefficient
 
-K.set_image_data_format("channels_first")
+# K.set_image_data_format("channels_first")
+K.common.set_image_dim_ordering('th')
 
 try:
     from keras.engine import merge
@@ -79,9 +80,9 @@ def unet_model_3d(input_shape, pool_size=(2, 2, 2), n_labels=1, initial_learning
             metrics = label_wise_dice_metrics
 
     model.compile(optimizer=Adam(lr=initial_learning_rate), loss=dice_coefficient_loss, metrics=metrics)
-    log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
-                                                          histogram_freq=1)
+    # log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
+    # 1                                                      histogram_freq=1)
     return model
 
 
@@ -104,6 +105,7 @@ def create_convolution_block(input_layer, n_filters, batch_normalization=False, 
     elif instance_normalization:
         try:
             from keras_contrib.layers.normalization import InstanceNormalization
+            # from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
         except ImportError:
             raise ImportError("Install keras_contrib in order to use instance normalization."
                               "\nTry: pip install git+https://www.github.com/farizrahman4u/keras-contrib.git")

@@ -1,6 +1,9 @@
 # 3D U-Net Convolution Neural Network with Keras
 ![Tumor Segmentation Example](doc/tumor_segmentation_illusatration.gif)
 ## Background
+This code is based on [this work](https://github.com/ellisdg/3DUnetCNN) on
+tumor segmentation from the MRI images using 3D UNET.
+
 Originally designed after [this paper](http://lmb.informatik.uni-freiburg.de/Publications/2016/CABR16/cicek16miccai.pdf) on 
 volumetric segmentation with a 3D U-Net.
 The code was written to be trained using the 
