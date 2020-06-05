@@ -124,8 +124,8 @@ def convert_stroke_data(stroke_folder='../data/ATLAS_R1.1/',
             subjects += 1
 
             for time_dir in time_dirs:
-                new_subj_dir = os.path.join(out_folder,
-                                            subject + '_t' + time_dir[-1])
+                dir_name = '_s' + site[-1] + subject + '_t' + time_dir[-1]
+                new_subj_dir = os.path.join(out_folder, dir_name)
                 if not os.path.exists(new_subj_dir):
                     os.makedirs(new_subj_dir)
 
@@ -224,12 +224,12 @@ def get_files(directory, name='t1', ext='.nii.gz'): #_image(subject_folder, subf
 if __name__ == "__main__":
     # TODO: add new data, '../BIDS_lesions_zip', format it correctly, check if
     # usable
+    # TODO: correct saving healthy data
     # TODO: look at all the data, all the scans if they look alright
     data_dir = '../../data/ATLAS_R1.1/'
+    data_dir_new = '../BIDS_lesions_zip'
     healthy_data_dir = '../../data/healthy'
 
     output_data_dir = 'data/preprocessed/'
 
     convert_stroke_data(stroke_folder=data_dir, out_folder=output_data_dir)
-
-
