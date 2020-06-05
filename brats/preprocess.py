@@ -124,7 +124,7 @@ def convert_stroke_data(stroke_folder='../data/ATLAS_R1.1/',
             subjects += 1
 
             for time_dir in time_dirs:
-                dir_name = '_s' + site[-1] + subject + '_t' + time_dir[-1]
+                dir_name = 's_' + site[-1] + subject + '_t' + time_dir[-1]
                 new_subj_dir = os.path.join(out_folder, dir_name)
                 if not os.path.exists(new_subj_dir):
                     os.makedirs(new_subj_dir)
@@ -209,6 +209,7 @@ def make_empty_mask(dim=[189,233,197]):
     array_mask = np.zeros([dim[0],dim[1],dim[2]])
     empty_mask = sitk.GetImageFromArray(array_mask, isVector=False)
     return empty_mask
+
 
 def get_files(directory, name='t1', ext='.nii.gz'): #_image(subject_folder, subfolder='t01', name='t1'):
     # In the directory, it finds all the files including the given name and
