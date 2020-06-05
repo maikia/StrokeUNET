@@ -79,10 +79,19 @@ def normalize_image(in_file, out_file, bias_correction=True):
 def convert_stroke_data(file_dir, out_dir, scan_name='t1',
                         mask_name='LesionSmooth'):
     """
+    Copies and renames the data files to run within this program settings
+    it also changes all the nonzero values in the mask to 1
+
     file_dir: where the files for the single subjects are stored
     out_dir: where the files should be copied to
     scan_name: name which is included in the name of the mri scan
     mask_name: name which is included in the name of the lesion image(s)
+
+    Note1: there might be more than one mask stored for one patients. Those
+    masks will be collapsed into one
+    Note2: some patients have scans at multiple times. Those scans will be
+    considered as separate patient
+    the output image masks will always consist only of [0, 1]s
 
     """
 
@@ -91,11 +100,9 @@ def convert_stroke_data(file_dir, out_dir, scan_name='t1',
 
     # copy the true image
     out_file_t1 = os.path.abspath(os.path.join(out_dir, "t1.nii.gz"))
-    mri_file = get_files(file_dir, scan_name)
-    try:
-        assert len(mri_file) == 1
-    except:
-        import pdb; pdb.set_trace()
+    mri_file = get_files(file_dir, scan_name, ext='nii.gz')
+    assert len(mri_file) == 1
+
     shutil.copy(mri_file[0], out_file_t1)
 
     # mask
@@ -117,14 +124,45 @@ def convert_stroke_data(file_dir, out_dir, scan_name='t1',
     sitk.WriteImage(truth_mask, out_file_path)
 
 
+def convert_data_new(stroke_folder='../data/BIDS_lesions_zip/',
+                     out_folder='data/preprocessed'):
+    """
+    Finds the subjects data and writes it to a given output folder in a
+    consistent format.
+    :param stroke_folder: folder containing the data with the following format:
+                          |-stroke_folder
+                            |_ <subject_name1>
+                                |_<subject_name1>nii.gz
+                                |_<subject_name1>.gz
+    Note: there might be multiple folders at each level.
+    """
+    # create data/preprocessed directory with files t1 and truth
+    subj_dirs = glob.glob(os.path.join(stroke_folder, "*"))
+    subj_dirs = [subj_dir for subj_dir in subj_dirs if
+                 os.path.isdir(subj_dir)]
+    site = stroke_folder.split('/')[-1]
+    subjects = 0
+
+    print('found {} subject directories'.format(len(subj_dirs)))
+
+    for subj_dir in subj_dirs:
+        # subject name
+        subject = os.path.basename(subj_dir)
+        subjects += 1
+
+        dir_name = 'new_' + subject
+        new_subj_dir = os.path.join(out_folder, dir_name)
+
+        convert_stroke_data(file_dir=subj_dir, out_dir=new_subj_dir,
+                            scan_name='T1w.', mask_name='label-lesion')
+    print('Copied data for {} subjects'.format(subjects))
+
+
 def convert_data_old(stroke_folder='../data/ATLAS_R1.1/',
                         out_folder='data/preprocessed'):
     """
-    # TODO: find better way of storing the raw data
-    Copies and renames the data files to run within this program settings
-    it also changes all the nonzero values in the mask to 1
-
-    The data and writes it to a given output folder.
+    Finds the subjects data and writes it to a given output folder in a
+    consistent format.
     :param stroke_folder: folder containing the data with the following format:
                           |-stroke_folder
                             |_ Site1
@@ -133,14 +171,6 @@ def convert_data_old(stroke_folder='../data/ATLAS_R1.1/',
                                         |_<subject_name1>_t1....nii.gz
                                         |_<subject_name1>_LesionSmooth...nii.gz
     Note: there might be multiple folders at each level.
-    Note2: there might be more than one mask stored in
-    Note3: some patients have scans at multiple times. Those scans will be
-    considered as separate patient
-    separate files. All the masks will be collapsed into a single one and each
-    mask will be marked with 1. So the output image masks will always consist
-    only of [0, 1]s
-    :param out_folder: output folder to which the preprocessed data will be
-                       written
     """
     # create data/preprocessed directory with files t1 and truth
     site_dirs = glob.glob(os.path.join(stroke_folder, "*"))
@@ -165,7 +195,7 @@ def convert_data_old(stroke_folder='../data/ATLAS_R1.1/',
             subjects += 1
 
             for time_dir in time_dirs:
-                dir_name = 's_' + site[-1] + subject + '_t' + time_dir[-1]
+                dir_name = 's' + site[-1] + '_' + subject + '_t' + time_dir[-1]
                 new_subj_dir = os.path.join(out_folder, dir_name)
 
                 convert_stroke_data(file_dir=time_dir, out_dir=new_subj_dir)
@@ -241,10 +271,10 @@ if __name__ == "__main__":
     # TODO: correct saving healthy data
     # TODO: look at all the data, all the scans if they look alright
     data_dir = '../../data/ATLAS_R1.1/'
-    data_dir_new = '../BIDS_lesions_zip'
+    data_dir_new = '../../data/BIDS_lesions_zip/'
     healthy_data_dir = '../../data/healthy'
 
     output_data_dir = 'data/preprocessed/'
 
-    convert_data_old(stroke_folder=data_dir, out_folder=output_data_dir)
-    # convert_data_new(stroke_folder=data_dir_new, out_folder=output_data_dir)
+    # convert_data_old(stroke_folder=data_dir, out_folder=output_data_dir)
+    convert_data_new(stroke_folder=data_dir_new, out_folder=output_data_dir)
