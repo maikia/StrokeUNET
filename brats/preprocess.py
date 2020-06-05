@@ -76,7 +76,48 @@ def normalize_image(in_file, out_file, bias_correction=True):
     return out_file
 
 
-def convert_stroke_data(stroke_folder='../data/ATLAS_R1.1/',
+def convert_stroke_data(file_dir, out_dir, scan_name='t1',
+                        mask_name='LesionSmooth'):
+    """
+    file_dir: where the files for the single subjects are stored
+    out_dir: where the files should be copied to
+    scan_name: name which is included in the name of the mri scan
+    mask_name: name which is included in the name of the lesion image(s)
+
+    """
+
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    # copy the true image
+    out_file_t1 = os.path.abspath(os.path.join(out_dir, "t1.nii.gz"))
+    mri_file = get_files(file_dir, scan_name)
+    try:
+        assert len(mri_file) == 1
+    except:
+        import pdb; pdb.set_trace()
+    shutil.copy(mri_file[0], out_file_t1)
+
+    # mask
+    truth_files = get_files(file_dir, name=mask_name)
+    assert len(truth_files) >= 1
+    out_file_path = os.path.abspath(os.path.join(out_dir, "truth.nii.gz"))
+    # if multiple lesions, sum all into one mask
+    masks = []
+    for mask in truth_files:
+        truth_image = sitk.ReadImage(mask)
+        truth_array = sitk.GetArrayFromImage(truth_image)
+        masks.append(truth_array)
+    truth_array = sum(masks)
+    # set all of the positive values in the mask to 1
+    truth_array[truth_array > 0] = 1
+    assert len(np.unique(truth_array)) in [1, 2]
+
+    truth_mask = sitk.GetImageFromArray(truth_array, isVector=False)
+    sitk.WriteImage(truth_mask, out_file_path)
+
+
+def convert_data_old(stroke_folder='../data/ATLAS_R1.1/',
                         out_folder='data/preprocessed'):
     """
     # TODO: find better way of storing the raw data
@@ -126,36 +167,8 @@ def convert_stroke_data(stroke_folder='../data/ATLAS_R1.1/',
             for time_dir in time_dirs:
                 dir_name = 's_' + site[-1] + subject + '_t' + time_dir[-1]
                 new_subj_dir = os.path.join(out_folder, dir_name)
-                if not os.path.exists(new_subj_dir):
-                    os.makedirs(new_subj_dir)
 
-                # copy the true image
-                out_file_t1 = os.path.abspath(os.path.join(new_subj_dir,
-                                                        "t1.nii.gz"))
-                mri_file = get_files(time_dir, 't1')
-                assert len(mri_file) == 1
-                shutil.copy(mri_file[0], out_file_t1)
-
-                # mask
-                truth_files = get_files(time_dir, name='LesionSmooth')
-                assert len(truth_files) >= 1
-                out_file_path = os.path.abspath(os.path.join(new_subj_dir,
-                                                            "truth.nii.gz"))
-                # if multiple lesions, sum all into one mask
-                masks = []
-                for mask in truth_files:
-                    truth_image = sitk.ReadImage(mask)
-                    truth_array = sitk.GetArrayFromImage(truth_image)
-                    masks.append(truth_array)
-                truth_array = sum(masks)
-                # set all of the positive values in the mask to 1
-                truth_array[truth_array > 0] = 1
-                assert len(np.unique(truth_array)) in [1, 2]
-
-                truth_mask = sitk.GetImageFromArray(truth_array,
-                                                    isVector=False)
-                sitk.WriteImage(truth_mask, out_file_path)
-
+                convert_stroke_data(file_dir=time_dir, out_dir=new_subj_dir)
                 files += 1
     print('Copied data for {} subjects, {} scans'.format(subjects, files))
 
@@ -233,4 +246,5 @@ if __name__ == "__main__":
 
     output_data_dir = 'data/preprocessed/'
 
-    convert_stroke_data(stroke_folder=data_dir, out_folder=output_data_dir)
+    convert_data_old(stroke_folder=data_dir, out_folder=output_data_dir)
+    # convert_data_new(stroke_folder=data_dir_new, out_folder=output_data_dir)
