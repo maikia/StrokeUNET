@@ -7,9 +7,12 @@ import os
 import warnings
 import shutil
 
-import SimpleITK as sitk
+
+import matplotlib.pylab as plt
+from nilearn.plotting import plot_anat
 import numpy as np
 from nipype.interfaces.ants import N4BiasFieldCorrection
+import SimpleITK as sitk
 
 
 def correct_bias(in_file, out_file, image_type=sitk.sitkFloat64):
@@ -82,6 +85,9 @@ def convert_stroke_data(file_dir, out_dir, scan_name='t1',
     # copy the true image
     out_file_t1 = os.path.abspath(os.path.join(out_dir, "t1.nii.gz"))
     mri_file = get_files(file_dir, scan_name, ext='nii.gz')
+
+    # mri_image = sitk.ReadImage(out_file_t1)
+    # mri_array = sitk.GetArrayFromImage(mri_image)
     assert len(mri_file) == 1
 
     shutil.copy(mri_file[0], out_file_t1)
@@ -168,6 +174,7 @@ def convert_data_old(stroke_folder='../data/ATLAS_R1.1/',
         for subj_dir in subj_dirs:
             # subject name
             subject = os.path.basename(subj_dir)
+            import pdb; pdb.set_trace()
 
             time_dirs = glob.glob(os.path.join(subj_dir, "*"))
             time_dirs = [time_dir for time_dir in time_dirs if
@@ -250,16 +257,53 @@ def get_files(directory, name='t1', ext='.nii.gz'):
         raise RuntimeError("Could not find file matching {}".format(file_card))
 
 
+def apply_mask(mask, file_in, file_out):
+    from nilearn.masking import apply_mask
+    masked_data = apply_mask(file_in, mask)
+
+
+def strip_skull_mask(file_in, file_out, plot=False):
+    # mask param does not seem to do what it's suppose to
+    skullstrip = BET(in_file=file_in,
+                 out_file=file_out,
+                 mask=True)
+    res = skullstrip.run()
+
+    if plot:
+
+        plot_anat(file_in,
+              title='original', display_mode='ortho', dim=-1, draw_cross=False,
+              annotate=False);
+        plot_anat(file_out,
+              title='mask2', display_mode='ortho', dim=-1, draw_cross=False,
+              annotate=False);
+        plt.show()
+
+def strip_skull(file_in, file_out, plot=False)
+    ''' file_in and file_out must be of '.nii.gz' format. Need to have fsl
+    installed to run'''
+    skullstrip = BET()
+    skullstrip.inputs.in_file = file_in
+    skullstrip.inputs.out_file = file_out
+    res = skullstrip.run()
+
+
 if __name__ == "__main__":
     # TODO: correct saving healthy data
     # TODO: look at all the data, all the scans if they look alright
     # TODO: for now no normalization, rescale is done and the bias is not
     # corrected, do we want it here?
     data_dir = '../../data/ATLAS_R1.1/'
-    data_dir_new = '../../data/BIDS_lesions_zip/'
-    healthy_data_dir = '../../data/healthy'
+    # data_dir_new = '../../data/BIDS_lesions_zip/'
+    # healthy_data_dir = '../../data/healthy'
 
     output_data_dir = 'data/preprocessed/'
 
     convert_data_old(stroke_folder=data_dir, out_folder=output_data_dir)
-    convert_data_new(stroke_folder=data_dir_new, out_folder=output_data_dir)
+    # convert_data_new(stroke_folder=data_dir_new, out_folder=output_data_dir)
+
+    # make essential preprocessing steps:
+    # 1. if eough info and if needed: magnetic field inhomogeneity correction
+    # using FSL topup command
+    # 2. align to a standard space like MNI: (scans and lesions)
+    # 3. remove the skull
