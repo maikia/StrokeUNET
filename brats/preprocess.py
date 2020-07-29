@@ -269,6 +269,11 @@ def strip_skull_mask(file_in, file_out, plot=False):
                  mask=True)
     res = skullstrip.run()
 
+    # it sets all the values > 0 to 1 creating a mask
+    t_img = load_img(file_out)
+    mask = math_img('img > 0', img=t_img)
+    mask.to_filename(file_out)
+
     if plot:
 
         plot_anat(file_in,
