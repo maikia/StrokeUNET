@@ -12,10 +12,11 @@ import matplotlib.pylab as plt
 from nilearn.plotting import plot_anat
 import numpy as np
 from nipype.interfaces.ants import N4BiasFieldCorrection
-import SimpleITK as sitk
+#import SimpleITK as sitk
+from nilearn.image import new_img_like
 
 
-def correct_bias(in_file, out_file, image_type=sitk.sitkFloat64):
+def correct_bias(in_file, out_file, image_type):  # =sitk.sitkFloat64):
     """
     Corrects the bias using ANTs N4BiasFieldCorrection. If this fails, will
     then attempt to correct bias using SimpleITK
@@ -144,6 +145,23 @@ def convert_data_new(stroke_folder='../data/BIDS_lesions_zip/',
     print('Copied data for {} subjects'.format(subjects))
 
 
+def find_scan_dirs(raw_dir='../../data/ATLAS_R1.1/'):
+    """
+    searches for the directories within the given directory and up the tree
+    with the scan data (ending on '.nii.gz').
+    :raw_dir: directory where to search for the t1 scans
+    output: list of directories with scans
+    """
+    path_list = []
+    for dirname, dirnames, filenames in os.walk(raw_dir):
+        # save directories with all filenames ending on '.nii.gz'
+        for filename in filenames:
+            if filename[-7:] == '.nii.gz':
+                path_list.append(dirname)
+                break
+    return path_list
+
+
 def convert_data_old(stroke_folder='../data/ATLAS_R1.1/',
                      out_folder='data/preprocessed'):
     """
@@ -257,13 +275,22 @@ def get_files(directory, name='t1', ext='.nii.gz'):
         raise RuntimeError("Could not find file matching {}".format(file_card))
 
 
-def apply_mask(mask, file_in, file_out):
-    from nilearn.masking import apply_mask
-    masked_data = apply_mask(file_in, mask)
+def apply_mask_to_image(mask, img, file_out):
+    # mask: mask to be applied to the image
+    # img, nilearn image to which mask is to be applied to
+    # masked: masked image in nilearn format
+    # t_img = load_img(mask)
+    assert mask.shape == img.shape
+    t_img_masked = img.get_fdata()
+    t_img_masked[mask == 0] = 0
+    masked = new_img_like(img, t_img_masked, affine=None, copy_header=False)
+    # masked_original.to_filename(file_out)
+    return masked
 
 
 def strip_skull_mask(file_in, file_out, plot=False):
     # mask param does not seem to do what it's suppose to
+    # and returns the mask
     skullstrip = BET(in_file=file_in,
                  out_file=file_out,
                  mask=True)
@@ -275,7 +302,6 @@ def strip_skull_mask(file_in, file_out, plot=False):
     mask.to_filename(file_out)
 
     if plot:
-
         plot_anat(file_in,
               title='original', display_mode='ortho', dim=-1, draw_cross=False,
               annotate=False);
@@ -283,8 +309,10 @@ def strip_skull_mask(file_in, file_out, plot=False):
               title='mask2', display_mode='ortho', dim=-1, draw_cross=False,
               annotate=False);
         plt.show()
+    return mask
 
-def strip_skull(file_in, file_out, plot=False)
+
+def strip_skull(file_in, file_out, plot=False):
     ''' file_in and file_out must be of '.nii.gz' format. Need to have fsl
     installed to run'''
     skullstrip = BET()
@@ -294,6 +322,18 @@ def strip_skull(file_in, file_out, plot=False)
 
 
 if __name__ == "__main__":
+    # loop through available images
+    #   unify all the available masks to a single mask with only 1s and 0s
+    #   remove the skull (from t1 and mask)
+    #   move all the images (t1 and masks) to mni space
+    #   noramlize images (same average color) ??
+    raw_dir = '../../data/ATLAS_R1.1/'  # first data set
+    raw_dir2 = '../../data/BIDS_lesions_zip/'  # second data set
+    raw_dir_healthy = '../../data/healthy'
+    path_list = find_scan_dirs(raw_dir)
+    import pdb; pdb.set_trace()
+
+
     # TODO: correct saving healthy data
     # TODO: look at all the data, all the scans if they look alright
     # TODO: for now no normalization, rescale is done and the bias is not
