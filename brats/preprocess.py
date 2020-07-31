@@ -298,20 +298,25 @@ def strip_skull_mask(file_in, file_out, plot=False):
                  mask=True)
     res = skullstrip.run()
 
+    if plot:
+        plot_anat(file_in,
+              title='original', display_mode='ortho', dim=-1, draw_cross=False,
+              annotate=False);
+        plot_anat(file_out,
+              title='origina, no skull', display_mode='ortho',
+              dim=-1, draw_cross=False, annotate=False);
+
     # it sets all the values > 0 to 1 creating a mask
     t_img = load_img(file_out)
     mask = math_img('img > 0', img=t_img)
     mask.to_filename(file_out)
 
     if plot:
-        plot_anat(file_in,
-              title='original', display_mode='ortho', dim=-1, draw_cross=False,
-              annotate=False);
         plot_anat(file_out,
-              title='mask2', display_mode='ortho', dim=-1, draw_cross=False,
+              title='mask', display_mode='ortho', dim=-1, draw_cross=False,
               annotate=False);
         plt.show()
-    return mask
+    return t_img, mask
 
 
 def combine_lesions(path, lesion_str='Lesion'):
@@ -375,20 +380,32 @@ if __name__ == "__main__":
     path_list = find_scan_dirs(raw_dir)
     len_path_list = len(path_list)
     for idx, path in enumerate(path_list):
-        print(f'{idx}/{len_path_list} working on {path}')
+        print(f'{idx+1}/{len_path_list} working on {path}')
         # check if multiple lesion files are saved
         # combines them and sets to 0 or 1
-        mask_img = combine_lesions(path, lesion_str='Lesion')
+        lesion_img = combine_lesions(path, lesion_str='Lesion')
         # assert not mask_img
         # remove the skull (from t1 and mask)
         print('stripping skull')
         file_in = find_file(path=path, include='t1', exclude=None)
-        assert len(file_in) == 1  # only a single t1 file should be found
+        assert len(file_in) == 1  # only a single T1 file should be found
         file_in = os.path.join(path, file_in[0])
         file_out = os.path.join(path, 'no_skull_mask.nii.gz')
-        mask_img = strip_skull_mask(file_in, file_out, plot=True)
-        # import pdb; pdb.set_trace()
+        mask_t1_img, mask_img = strip_skull_mask(file_in, file_out, plot=False)
+        print('removing skull from the lesion image')
+        mask_lesion_img = apply_mask_to_image(mask_img, lesion_img, file_out)
+        assert mask_lesion_img.shape == mask_t1_img.shape
+        import pdb; pdb.set_trace()
 
+
+        # add the new image files to the path assigning the number to it
+        # add the new image files to the .csv files (old path, new path, old
+        # patient name, new patient name, lesion size before preprocessing,
+        # add the picture of the transformation
+        # add the parameter to generate from the beginning or add to already
+        # existing
+        # try to speed up the process
+        # lesion size after preprocessing, image size)
         # print('\n')
         # if not err:
         #    path_list.remove(path)
