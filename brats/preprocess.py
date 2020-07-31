@@ -291,8 +291,7 @@ def apply_mask_to_image(mask, img, file_out, savefig_dir=None, ext='.png'):
         plot_anat(masked,
                 title='mask', display_mode='ortho', dim=-1, draw_cross=False,
                 annotate=False)
-                plt.savefig(
-                    os.path.join(savefig_dir, '4_mask_lesion_no_skull' + ext))
+        plt.savefig(os.path.join(savefig_dir, '4_mask_lesion_no_skull' + ext))
     return masked
 
 
@@ -377,33 +376,12 @@ def find_file(path, include='t1', exclude='lesion'):
     return files
 
 
-def plot_skull_strip_process(original_img, mask_img, new_img, mask_lesion_img):
-    from nilearn import plotting
-    plt.subplot(4,1,1)
-    plotting.plot_stat_map(original_img,
-                           bg_img=None,
-                           cut_coords=(36, -27, 66),
-                           threshold=3,
-                           title="original image")
-    plt.subplot(4,1,2)
-    plotting.plot_stat_map(mask_img,
-                           bg_img=None,
-                           cut_coords=(36, -27, 66),
-                           threshold=3,
-                           title="mask, no skull")
-    plt.subplot(4,1,3)
-    plotting.plot_stat_map(new_img,
-                           bg_img=None,
-                           cut_coords=(36, -27, 66),
-                           threshold=3,
-                           title="original, no skull")
-    plt.subplot(4,1,4)
-    plotting.plot_stat_map(mask_lesion_img,
-                           bg_img=None,
-                           cut_coords=(36, -27, 66),
-                           threshold=3,
-                           title="lesion, no skull")
-    plt.show()
+def clean_all(dir_to_clean):
+    # removes all the files and directories from the given path
+    import shutil
+    shutil.rmtree(dir_to_clean)
+    print(f'removed all from {dir_to_clean}')
+
 
 if __name__ == "__main__":
     # loop through available images
@@ -416,9 +394,17 @@ if __name__ == "__main__":
     raw_dir_healthy = '../../data/healthy'
     results_dir = 'data/preprocessed/'
     ext = '.png'
+    # careful, if set to True, all the previous preprocessing saved
+    # data will be removed
+    rerun_all = True  # careful !!
 
     path_list = find_scan_dirs(raw_dir)
     len_path_list = len(path_list)
+
+    if rerun_all:
+        clean_all(results_dir)
+
+    import pdb; pdb.set_trace()
     for idx, path in enumerate(path_list):
         print(f'{idx+1}/{len_path_list} working on {path}')
         # check if multiple lesion files are saved
