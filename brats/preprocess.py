@@ -277,45 +277,54 @@ def get_files(directory, name='t1', ext='.nii.gz'):
         raise RuntimeError("Could not find file matching {}".format(file_card))
 
 
-def apply_mask_to_image(mask, img, file_out):
+def apply_mask_to_image(mask, img, file_out, savefig_dir=None, ext='.png'):
     # mask: mask to be applied to the image
     # img, nilearn image to which mask is to be applied to
     # masked: masked image in nilearn format
     # t_img = load_img(mask)
     assert mask.shape == img.shape
-    t_img_masked = img.get_fdata()
-    t_img_masked[mask == 0] = 0
-    masked = new_img_like(img, t_img_masked, affine=None, copy_header=False)
-    # masked_original.to_filename(file_out)
+    img_data = img.get_fdata()
+    img_data[mask == 0] = 0
+    masked = new_img_like(img, img_data, affine=None, copy_header=False)
+
+    if savefig_dir is not None:
+        plot_anat(masked,
+                title='mask', display_mode='ortho', dim=-1, draw_cross=False,
+                annotate=False)
+                plt.savefig(
+                    os.path.join(savefig_dir, '4_mask_lesion_no_skull' + ext))
     return masked
 
 
-def strip_skull_mask(file_in, file_out, plot=False):
+def strip_skull_mask(file_in, file_out, savefig_dir=None, ext='.png'):
     # mask param does not seem to do what it's suppose to
     # and returns the mask
+    # set sevefig_dir to None to not plot
     skullstrip = BET(in_file=file_in,
                  out_file=file_out,
                  mask=True)
     res = skullstrip.run()
 
-    if plot:
+    if savefig_dir is not None:
         plot_anat(file_in,
               title='original', display_mode='ortho', dim=-1, draw_cross=False,
-              annotate=False);
+              annotate=False)
+        plt.savefig(os.path.join(savefig_dir, '1_original_image' + ext))
         plot_anat(file_out,
-              title='origina, no skull', display_mode='ortho',
-              dim=-1, draw_cross=False, annotate=False);
+              title='original, no skull', display_mode='ortho',
+              dim=-1, draw_cross=False, annotate=False)
+        plt.savefig(os.path.join(savefig_dir, '3_original_no_skull' + ext))
 
     # it sets all the values > 0 to 1 creating a mask
     t_img = load_img(file_out)
     mask = math_img('img > 0', img=t_img)
     mask.to_filename(file_out)
 
-    if plot:
+    if savefig_dir:
         plot_anat(file_out,
               title='mask', display_mode='ortho', dim=-1, draw_cross=False,
-              annotate=False);
-        plt.show()
+              annotate=False)
+        plt.savefig(os.path.join(savefig_dir, '2_mask_no_skull' + ext))
     return t_img, mask
 
 
@@ -368,6 +377,34 @@ def find_file(path, include='t1', exclude='lesion'):
     return files
 
 
+def plot_skull_strip_process(original_img, mask_img, new_img, mask_lesion_img):
+    from nilearn import plotting
+    plt.subplot(4,1,1)
+    plotting.plot_stat_map(original_img,
+                           bg_img=None,
+                           cut_coords=(36, -27, 66),
+                           threshold=3,
+                           title="original image")
+    plt.subplot(4,1,2)
+    plotting.plot_stat_map(mask_img,
+                           bg_img=None,
+                           cut_coords=(36, -27, 66),
+                           threshold=3,
+                           title="mask, no skull")
+    plt.subplot(4,1,3)
+    plotting.plot_stat_map(new_img,
+                           bg_img=None,
+                           cut_coords=(36, -27, 66),
+                           threshold=3,
+                           title="original, no skull")
+    plt.subplot(4,1,4)
+    plotting.plot_stat_map(mask_lesion_img,
+                           bg_img=None,
+                           cut_coords=(36, -27, 66),
+                           threshold=3,
+                           title="lesion, no skull")
+    plt.show()
+
 if __name__ == "__main__":
     # loop through available images
     #   unify all the available masks to a single mask with only 1s and 0s
@@ -377,6 +414,9 @@ if __name__ == "__main__":
     raw_dir = '../../data/ATLAS_R1.1/'  # first data set
     raw_dir2 = '../../data/BIDS_lesions_zip/'  # second data set
     raw_dir_healthy = '../../data/healthy'
+    results_dir = 'data/preprocessed/'
+    ext = '.png'
+
     path_list = find_scan_dirs(raw_dir)
     len_path_list = len(path_list)
     for idx, path in enumerate(path_list):
@@ -391,10 +431,14 @@ if __name__ == "__main__":
         assert len(file_in) == 1  # only a single T1 file should be found
         file_in = os.path.join(path, file_in[0])
         file_out = os.path.join(path, 'no_skull_mask.nii.gz')
-        mask_t1_img, mask_img = strip_skull_mask(file_in, file_out, plot=False)
-        print('removing skull from the lesion image')
-        mask_lesion_img = apply_mask_to_image(mask_img, lesion_img, file_out)
+        mask_t1_img, mask_img = strip_skull_mask(
+            file_in, file_out, savefig_dir=results_dir, ext=ext)
+        mask_lesion_img = apply_mask_to_image(mask_img, lesion_img,
+                                              file_out=None,
+                                              savefig_dir=results_dir, ext=ext)
         assert mask_lesion_img.shape == mask_t1_img.shape
+
+        print('normalizing the images')
         import pdb; pdb.set_trace()
 
 
