@@ -2,12 +2,13 @@
 Tools for converting, normalizing, and fixing the stroke data.
 """
 
+from nipype.interfaces.fsl import BET
 import glob
 import os
 import warnings
 import shutil
 
-
+from nilearn.image import load_img, math_img
 import matplotlib.pylab as plt
 from nilearn.plotting import plot_anat
 import numpy as np
@@ -152,6 +153,7 @@ def find_scan_dirs(raw_dir='../../data/ATLAS_R1.1/'):
     :raw_dir: directory where to search for the t1 scans
     output: list of directories with scans
     """
+    print(f'Wait. I am searching {raw_dir} for "nii.gz" files')
     path_list = []
     for dirname, dirnames, filenames in os.walk(raw_dir):
         # save directories with all filenames ending on '.nii.gz'
@@ -312,6 +314,37 @@ def strip_skull_mask(file_in, file_out, plot=False):
     return mask
 
 
+def combine_lesions(path, lesion_str='Lesion'):
+    # path: path to the directory with all the scans
+    # out_file: name of the combined lesion file saved in the path
+    # lesion_str: string which is included in the name of all the lesions but
+    # not any other files
+    n_lesions = 0
+    print('combining lesions and setting them to 0s and 1s')
+    for file_name in os.listdir(path):
+        if lesion_str in file_name:
+            # is lesion
+            lesion_img = load_img(os.path.join(path, file_name))
+            lesion_data = lesion_img.get_fdata()
+            if n_lesions == 0:
+                lesion = lesion_data
+            else:
+                lesion += lesion_data
+            n_lesions += 1
+    if n_lesions > 0:
+        lesion[lesion > 0] = 1
+        masked = new_img_like(lesion_img, lesion,
+                              affine=None, copy_header=False)
+        # masked.to_filename(os.path.join(path, out_file))
+        return masked
+    else:
+        # there are no lesions found. This path should be removed
+        warnings.warn('there are no lesion files with name including '
+                      f'{lesion_str} found in the {path}. This path will be '
+                      'removed from further analysis')
+        return 0
+
+
 def strip_skull(file_in, file_out, plot=False):
     ''' file_in and file_out must be of '.nii.gz' format. Need to have fsl
     installed to run'''
@@ -319,6 +352,15 @@ def strip_skull(file_in, file_out, plot=False):
     skullstrip.inputs.in_file = file_in
     skullstrip.inputs.out_file = file_out
     res = skullstrip.run()
+
+
+def find_file(path, include='t1', exclude='lesion'):
+    files = os.listdir(path)
+    if include is not None:
+        files = [n_file for n_file in files if (include in n_file)]
+    if exclude is not None:
+        files = [n_file for n_file in files if (exclude not in n_file)]
+    return files
 
 
 if __name__ == "__main__":
@@ -331,8 +373,26 @@ if __name__ == "__main__":
     raw_dir2 = '../../data/BIDS_lesions_zip/'  # second data set
     raw_dir_healthy = '../../data/healthy'
     path_list = find_scan_dirs(raw_dir)
-    import pdb; pdb.set_trace()
+    len_path_list = len(path_list)
+    for idx, path in enumerate(path_list):
+        print(f'{idx}/{len_path_list} working on {path}')
+        # check if multiple lesion files are saved
+        # combines them and sets to 0 or 1
+        mask_img = combine_lesions(path, lesion_str='Lesion')
+        # assert not mask_img
+        # remove the skull (from t1 and mask)
+        print('stripping skull')
+        file_in = find_file(path=path, include='t1', exclude=None)
+        assert len(file_in) == 1  # only a single t1 file should be found
+        file_in = os.path.join(path, file_in[0])
+        file_out = os.path.join(path, 'no_skull_mask.nii.gz')
+        mask_img = strip_skull_mask(file_in, file_out, plot=True)
+        # import pdb; pdb.set_trace()
 
+        # print('\n')
+        # if not err:
+        #    path_list.remove(path)
+        #    continue
 
     # TODO: correct saving healthy data
     # TODO: look at all the data, all the scans if they look alright
