@@ -5,6 +5,7 @@ Tools for converting, normalizing, and fixing the stroke data.
 from nipype.interfaces.fsl import BET
 import glob
 import os
+import pandas as pd
 import warnings
 import shutil
 
@@ -153,7 +154,7 @@ def find_scan_dirs(raw_dir='../../data/ATLAS_R1.1/'):
     :raw_dir: directory where to search for the t1 scans
     output: list of directories with scans
     """
-    print(f'Wait. I am searching {raw_dir} for "nii.gz" files')
+    print(f'Wait. I am searching for "nii.gz" files in {raw_dir}')
     path_list = []
     for dirname, dirnames, filenames in os.walk(raw_dir):
         # save directories with all filenames ending on '.nii.gz'
@@ -378,9 +379,11 @@ def find_file(path, include='t1', exclude='lesion'):
 
 def clean_all(dir_to_clean):
     # removes all the files and directories from the given path
-    import shutil
-    shutil.rmtree(dir_to_clean)
-    print(f'removed all from {dir_to_clean}')
+
+    if os.path.exists(dir_to_clean):
+        shutil.rmtree(dir_to_clean)
+    os.mkdir(dir_to_clean)
+    print(f'cleaned all from {dir_to_clean}')
 
 
 def init_base(base_dir, file_name = 'subject_info.csv'):
@@ -388,15 +391,28 @@ def init_base(base_dir, file_name = 'subject_info.csv'):
     # returns next subject ID to be used
     file_path = os.path.join(base_dir, file_name)
     if not os.path.exists(file_path):
-        dfObj = pd.DataFrame(columns=['RawPath', 'ProcessedPath', 'RawID',
+        dfObj = pd.DataFrame(columns=['RawPath', 'ProcessedPath',
                                       'NewID', 'RawSize', 'NewSize',
                                       'RawLesionSize', 'NewLesionSize'])
         dfObj.to_csv(file_path)
-        return 0
+        return 1, dfObj
     else:
         dfObj = pd.read_csv(file_path)
-        last_used_id = np.max(dfObj['NewID'])
-        return last_used_id + 1
+        if len(dfObj) == 0:
+            return 1, dfObj
+        else:
+            last_used_id = np.max(dfObj['NewID'])
+            return last_used_id + 1, dfObj
+
+
+def init_next_subj(**kwargs):
+    # initiates new dictionary with the values to save:
+    next_subj = dict.fromkeys(['RawPath', 'ProcessedPath', 'NewID',
+                               'RawSize', 'NewSize', 'RawLesionSize',
+                               'NewLesionSize'], None)
+    for key, value in kwargs.items():
+        next_subj[key] = value
+    return next_subj
 
 
 if __name__ == "__main__":
@@ -419,11 +435,20 @@ if __name__ == "__main__":
 
     if rerun_all:
         clean_all(results_dir)
-    import pdb; pdb.set_trace()
-    init_base(results_dir)
+    next_id, df_info = init_base(results_dir)
+
 
     for idx, path in enumerate(path_list):
-        print(f'{idx+1}/{len_path_list} working on {path}')
+        print(f'{idx+1}/{len_path_list}, subject {next_id}, working on {path}')
+        results_path = os.path.join(results_dir, f'subject_{next_id}')
+
+        # create output path (TODO: for now if sth goes wrong this path remains
+        os.mkdir(results_path)
+        os.mkdir(os.path.join(results_path, 'figs'))
+        # initiates info dict for the new subject
+        next_subj = init_next_subj(RawPath=path, ProcessedPath=results_path,
+                                   NewID=next_id)
+
         # check if multiple lesion files are saved
         # combines them and sets to 0 or 1
         lesion_img = combine_lesions(path, lesion_str='Lesion')
@@ -443,6 +468,7 @@ if __name__ == "__main__":
 
         print('normalizing the images')
         import pdb; pdb.set_trace()
+        next_id += next_id
 
 
         # add the new image files to the path assigning the number to it
