@@ -383,6 +383,22 @@ def clean_all(dir_to_clean):
     print(f'removed all from {dir_to_clean}')
 
 
+def init_base(base_dir, file_name = 'subject_info.csv'):
+    # initiates filename .csv file if it does not already exists
+    # returns next subject ID to be used
+    file_path = os.path.join(base_dir, file_name)
+    if not os.path.exists(file_path):
+        dfObj = pd.DataFrame(columns=['RawPath', 'ProcessedPath', 'RawID',
+                                      'NewID', 'RawSize', 'NewSize',
+                                      'RawLesionSize', 'NewLesionSize'])
+        dfObj.to_csv(file_path)
+        return 0
+    else:
+        dfObj = pd.read_csv(file_path)
+        last_used_id = np.max(dfObj['NewID'])
+        return last_used_id + 1
+
+
 if __name__ == "__main__":
     # loop through available images
     #   unify all the available masks to a single mask with only 1s and 0s
@@ -403,8 +419,9 @@ if __name__ == "__main__":
 
     if rerun_all:
         clean_all(results_dir)
-
     import pdb; pdb.set_trace()
+    init_base(results_dir)
+
     for idx, path in enumerate(path_list):
         print(f'{idx+1}/{len_path_list} working on {path}')
         # check if multiple lesion files are saved
