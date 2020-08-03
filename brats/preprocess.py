@@ -415,42 +415,34 @@ def init_next_subj(**kwargs):
     return next_subj
 
 
-def normalize_to_mni(file_in, file_out, template_out, is_lesion=False):
+def normalize_to_mni(t1_in, t1_out, lesion_in, lesion_out,
+                     template_out, matrix_out):
 
+    # transforms the t1_in to the same space as template_out, saves the
+    # transformed image under t1_out and the transformation matrix under
+    # matrix_out
     returncode = subprocess.run([
-        "flirt",
-        "-in", file_in,
-        "-out", file_out,
-        "-ref", template_out])
-    if is_lesion:
-        # need to adjust back the threshold
-        returncode = subprocess.run([
-            "fslmaths", file_out,
-            "-thr", "0.9",
-            "-bin", file_out])
-    '''
-    plotting.plot_stat_map(file_in,
-                       bg_img=template,
-                       cut_coords=(36, -27, 66),
-                       threshold=3,
-                       title="t-map in original resolution")
-    plotting.plot_stat_map(mask,
-                        bg_img=template,
-                        cut_coords=(36, -27, 66),
-                        threshold=3,
-                        title="Original mask")
-    plotting.plot_stat_map(resampled_stat_img,
-                        bg_img=template,
-                        cut_coords=(36, -27, 66),
-                        threshold=3,
-                        title="Resampled t-map")
-    plotting.plot_stat_map(resampled_mask,
-                        bg_img=template,
-                        cut_coords=(36, -27, 66),
-                        threshold=3,
-                        title="Resampled mask")
-    plotting.show()
-    '''
+            "flirt",
+            "-in", t1_in,
+            "-out", t1_out,
+            "-ref", template_out,
+            "-omat", matrix_out])
+
+    # takes the saved matrix_out and uses it to transform lesion_in and saves
+    # the tranformed lesion_in under lesion_out
+    subprocess.run([
+            "flirt",
+            "-in", lesion_in,
+            "-out", lesion_out,
+            "-applyxfm", "-init", matrix_out,
+            "-ref", template_out])
+
+    # converts mask to binary. The higher threshold the smaller the mask
+    subprocess.run([
+        "fslmaths", lesion_out,
+        "-thr", "0.5",
+        "-bin", lesion_out])
+
 
 if __name__ == "__main__":
     # loop through available images
@@ -469,23 +461,23 @@ if __name__ == "__main__":
 
     # save the template mni brain locally
     # template = load_mni152_template()
-    # you can also use symmetric mni template
+    # find other mni templates at:
+    # http://www.bic.mni.mcgill.ca/ServicesAtlases/ICBM152NLin2009
     template_out = os.path.join('../../data/',
                                 'mne_template',
-                                'mni_icbm152_t1_tal_nlin_asym_09b_hires.nii.gz'
-                                )
+                                'mni_icbm152_t1_tal_nlin_asym_09c.nii.gz')
     # template = load_img(template_out)
     # template_mni.nii.gz'
 
     path_list = find_scan_dirs(raw_dir)
-    len_path_list = len(path_list)
+    n_dirs = len(path_list)
 
     if rerun_all:
         clean_all(results_dir)
     next_id, df_info = init_base(results_dir)
 
     for idx, path_raw in enumerate(path_list):
-        print(f'{idx+1}/{len_path_list}, subject {next_id}, working on {path_raw}')
+        print(f'{idx+1}/{n_dirs}, subject {next_id}, working on {path_raw}')
         path_results = os.path.join(results_dir, f'subject_{next_id}')
         path_figs = os.path.join(path_results, 'figs')
 
@@ -533,10 +525,11 @@ if __name__ == "__main__":
         )
         no_skull_norm_lesion_file = os.path.join(
             path_results, 'no_skull_norm_lesion.nii.gz')
+
+        transform_matrix_file = os.path.join(path_results, 'matrix.mat')
         normalize_to_mni(t1_no_skull_file, no_skull_norm_t1_file,
-                         template_out, is_lesion=False)  # flirt from fsl
-        normalize_to_mni(no_skull_lesion_file, no_skull_norm_lesion_file,
-                         template_out, is_lesion=True)
+                         no_skull_lesion_file, no_skull_norm_lesion_file,
+                         template_out, transform_matrix_file)  # flirt from fsl
 
         print('plotting normalized images')
         plot_anat(no_skull_norm_t1_file,
@@ -547,17 +540,21 @@ if __name__ == "__main__":
         plot_anat(no_skull_norm_lesion_file,
                   title='lesion, no skull, norm', display_mode='ortho', dim=-1,
                   draw_cross=False, annotate=False)
-        plt.savefig(os.path.join(path_figs, '6_lesion_no_skull_norm' + ext))
+        plt.savefig(os.path.join(path_figs, '7_lesion_no_skull_norm' + ext))
 
         no_skull_norm_lesion_img = load_img(no_skull_norm_lesion_file)
-        lesion_size = int(np.sum(no_skull_norm_lesion_img.get_fdata()))
+        no_skull_norm_lesion_data = no_skull_norm_lesion_img.get_fdata()
+        next_subj['NewLesionSize'] = int(np.sum(no_skull_norm_lesion_data))
 
         no_skull_norm_t1_img = load_img(no_skull_norm_t1_file)
-        template_img = load_img(template_out)
 
+        plot_anat(template_out,
+                  title='template', display_mode='ortho', dim=-1,
+                  draw_cross=False, annotate=False)
+        plt.savefig(os.path.join(path_figs, '0_template' + ext))
 
-        no_skull_norm_t1_img = load_img(no_skull_norm_t1_img)
-        import pdb; pdb.set_trace()
+        next_subj['NewSize'] = no_skull_norm_lesion_data.shape
+
         next_id += next_id
 
         # do we want to resample image?
