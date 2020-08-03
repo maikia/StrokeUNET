@@ -299,32 +299,29 @@ def apply_mask_to_image(mask, img, file_out, savefig_dir=None, ext='.png'):
     return masked
 
 
-def strip_skull_mask(file_in, file_out, savefig_dir=None, ext='.png'):
+def strip_skull_mask(file_in, t1_file_out, mask_file_out,
+                     savefig_dir=None, ext='.png'):
     # mask param does not seem to do what it's suppose to
     # and returns the mask
     # set sevefig_dir to None to not plot
-    skullstrip = BET(in_file=file_in,
-                 out_file=file_out,
-                 mask=True)
+    skullstrip = BET(in_file=file_in, out_file=t1_file_out, mask=True)
     res = skullstrip.run()
+
+    # it sets all the values > 0 to 1 creating a mask
+    t_img = load_img(t1_file_out)
+    mask = math_img('img > 0', img=t_img)
+    mask.to_filename(mask_file_out)
 
     if savefig_dir is not None:
         plot_anat(file_in,
               title='original', display_mode='ortho', dim=-1, draw_cross=False,
               annotate=False)
         plt.savefig(os.path.join(savefig_dir, '1_original_image' + ext))
-        plot_anat(file_out,
+        plot_anat(t1_file_out,
               title='original, no skull', display_mode='ortho',
               dim=-1, draw_cross=False, annotate=False)
         plt.savefig(os.path.join(savefig_dir, '3_original_no_skull' + ext))
-
-    # it sets all the values > 0 to 1 creating a mask
-    t_img = load_img(file_out)
-    mask = math_img('img > 0', img=t_img)
-    mask.to_filename(file_out)
-
-    if savefig_dir:
-        plot_anat(file_out,
+        plot_anat(mask_file_out,
               title='mask', display_mode='ortho', dim=-1, draw_cross=False,
               annotate=False)
         plt.savefig(os.path.join(savefig_dir, '2_mask_no_skull' + ext))
@@ -368,7 +365,7 @@ def strip_skull(file_in, file_out, plot=False):
     skullstrip = BET()
     skullstrip.inputs.in_file = file_in
     skullstrip.inputs.out_file = file_out
-    res = skullstrip.run()
+    skullstrip.run()
 
 
 def find_file(path, include='t1', exclude='lesion'):
@@ -389,7 +386,7 @@ def clean_all(dir_to_clean):
     print(f'cleaned all from {dir_to_clean}')
 
 
-def init_base(base_dir, file_name = 'subject_info.csv'):
+def init_base(base_dir, file_name='subject_info.csv'):
     # initiates filename .csv file if it does not already exists
     # returns next subject ID to be used
     file_path = os.path.join(base_dir, file_name)
@@ -418,16 +415,20 @@ def init_next_subj(**kwargs):
     return next_subj
 
 
-def normalize_to_mni(file_in, file_out, template_out):
+def normalize_to_mni(file_in, file_out, template_out, is_lesion=False):
 
     returncode = subprocess.run([
         "flirt",
         "-in", file_in,
         "-out", file_out,
         "-ref", template_out])
-
-
-
+    if is_lesion:
+        # need to adjust back the threshold
+        returncode = subprocess.run([
+            "fslmaths", file_out,
+            "-thr", "0.9",
+            "-bin", file_out])
+    '''
     plotting.plot_stat_map(file_in,
                        bg_img=template,
                        cut_coords=(36, -27, 66),
@@ -449,7 +450,7 @@ def normalize_to_mni(file_in, file_out, template_out):
                         threshold=3,
                         title="Resampled mask")
     plotting.show()
-
+    '''
 
 if __name__ == "__main__":
     # loop through available images
@@ -467,9 +468,14 @@ if __name__ == "__main__":
     rerun_all = True  # careful !!
 
     # save the template mni brain locally
-    template = load_mni152_template()
-    template_out = '../../data/template_mni.nii.gz'
-    template.to_filename(template_out)
+    # template = load_mni152_template()
+    # you can also use symmetric mni template
+    template_out = os.path.join('../../data/',
+                                'mne_template',
+                                'mni_icbm152_t1_tal_nlin_asym_09b_hires.nii.gz'
+                                )
+    # template = load_img(template_out)
+    # template_mni.nii.gz'
 
     path_list = find_scan_dirs(raw_dir)
     len_path_list = len(path_list)
@@ -501,19 +507,56 @@ if __name__ == "__main__":
         print('stripping skull')
         file_in = find_file(path=path_raw, include='t1', exclude=None)
         assert len(file_in) == 1  # only a single T1 file should be found
-        file_in = os.path.join(path_raw, file_in[0])
-        file_out = os.path.join(path_results, 'no_skull_mask.nii.gz')
+        t1_file = os.path.join(path_raw, file_in[0])
+        t1_no_skull_file = os.path.join(path_results, 't1_no_skull.nii.gz')
+        mask_no_skull_file = os.path.join(path_results, 'mask_no_skull.nii.gz')
         no_skull_t1_img, mask_img = strip_skull_mask(
-            file_in, file_out, savefig_dir=results_dir, ext=ext)
+            t1_file, t1_no_skull_file, mask_no_skull_file,
+            savefig_dir=results_dir, ext=ext)
         no_skull_lesion_img = apply_mask_to_image(mask_img, lesion_img,
-                                              file_out=None,
-                                              savefig_dir=results_dir, ext=ext)
+                                                  file_out=None,
+                                                  savefig_dir=results_dir,
+                                                  ext=ext)
+
+        # save files, plot images (?)
+        no_skull_lesion_file = os.path.join(path_results,
+                                            'no_skull_lesion.nii.gz')
+        # no_skull_t1_file = os.path.join(path_results, 'no_skull_t1.nii.gz ')
+        no_skull_lesion_img.to_filename(no_skull_lesion_file)
+
         assert no_skull_lesion_img.shape == no_skull_t1_img.shape
 
         # align the image
-        print('normalizing the images')
-        normalize_to_mni(file_in, file_out, template_out)
+        print('normalizing to mni space')
+        no_skull_norm_t1_file = os.path.join(
+            path_results, 'no_skull_norm_t1.nii.gz'
+        )
+        no_skull_norm_lesion_file = os.path.join(
+            path_results, 'no_skull_norm_lesion.nii.gz')
+        normalize_to_mni(t1_no_skull_file, no_skull_norm_t1_file,
+                         template_out, is_lesion=False)  # flirt from fsl
+        normalize_to_mni(no_skull_lesion_file, no_skull_norm_lesion_file,
+                         template_out, is_lesion=True)
 
+        print('plotting normalized images')
+        plot_anat(no_skull_norm_t1_file,
+                  title='t1, no skull, norm', display_mode='ortho', dim=-1,
+                  draw_cross=False, annotate=False)
+        plt.savefig(os.path.join(path_figs, '6_t1_no_skull_norm' + ext))
+
+        plot_anat(no_skull_norm_lesion_file,
+                  title='lesion, no skull, norm', display_mode='ortho', dim=-1,
+                  draw_cross=False, annotate=False)
+        plt.savefig(os.path.join(path_figs, '6_lesion_no_skull_norm' + ext))
+
+        no_skull_norm_lesion_img = load_img(no_skull_norm_lesion_file)
+        lesion_size = int(np.sum(no_skull_norm_lesion_img.get_fdata()))
+
+        no_skull_norm_t1_img = load_img(no_skull_norm_t1_file)
+        template_img = load_img(template_out)
+
+
+        no_skull_norm_t1_img = load_img(no_skull_norm_t1_img)
         import pdb; pdb.set_trace()
         next_id += next_id
 
