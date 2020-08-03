@@ -14,8 +14,11 @@ import matplotlib.pylab as plt
 from nilearn.plotting import plot_anat
 import numpy as np
 from nipype.interfaces.ants import N4BiasFieldCorrection
-#import SimpleITK as sitk
+# import SimpleITK as sitk
 from nilearn.image import new_img_like
+from nilearn.datasets import load_mni152_template
+from nilearn.image import resample_to_img
+import subprocess
 
 
 def correct_bias(in_file, out_file, image_type):  # =sitk.sitkFloat64):
@@ -415,6 +418,39 @@ def init_next_subj(**kwargs):
     return next_subj
 
 
+def normalize_to_mni(file_in, file_out, template_out):
+
+    returncode = subprocess.run([
+        "flirt",
+        "-in", file_in,
+        "-out", file_out,
+        "-ref", template_out])
+
+
+
+    plotting.plot_stat_map(file_in,
+                       bg_img=template,
+                       cut_coords=(36, -27, 66),
+                       threshold=3,
+                       title="t-map in original resolution")
+    plotting.plot_stat_map(mask,
+                        bg_img=template,
+                        cut_coords=(36, -27, 66),
+                        threshold=3,
+                        title="Original mask")
+    plotting.plot_stat_map(resampled_stat_img,
+                        bg_img=template,
+                        cut_coords=(36, -27, 66),
+                        threshold=3,
+                        title="Resampled t-map")
+    plotting.plot_stat_map(resampled_mask,
+                        bg_img=template,
+                        cut_coords=(36, -27, 66),
+                        threshold=3,
+                        title="Resampled mask")
+    plotting.show()
+
+
 if __name__ == "__main__":
     # loop through available images
     #   unify all the available masks to a single mask with only 1s and 0s
@@ -430,6 +466,11 @@ if __name__ == "__main__":
     # data will be removed
     rerun_all = True  # careful !!
 
+    # save the template mni brain locally
+    template = load_mni152_template()
+    template_out = '../../data/template_mni.nii.gz'
+    template.to_filename(template_out)
+
     path_list = find_scan_dirs(raw_dir)
     len_path_list = len(path_list)
 
@@ -437,38 +478,49 @@ if __name__ == "__main__":
         clean_all(results_dir)
     next_id, df_info = init_base(results_dir)
 
-
-    for idx, path in enumerate(path_list):
-        print(f'{idx+1}/{len_path_list}, subject {next_id}, working on {path}')
-        results_path = os.path.join(results_dir, f'subject_{next_id}')
+    for idx, path_raw in enumerate(path_list):
+        print(f'{idx+1}/{len_path_list}, subject {next_id}, working on {path_raw}')
+        path_results = os.path.join(results_dir, f'subject_{next_id}')
+        path_figs = os.path.join(path_results, 'figs')
 
         # create output path (TODO: for now if sth goes wrong this path remains
-        os.mkdir(results_path)
-        os.mkdir(os.path.join(results_path, 'figs'))
+        os.mkdir(path_results)
+        os.mkdir(path_figs)
         # initiates info dict for the new subject
-        next_subj = init_next_subj(RawPath=path, ProcessedPath=results_path,
+        next_subj = init_next_subj(RawPath=path_raw,
+                                   ProcessedPath=path_results,
                                    NewID=next_id)
 
         # check if multiple lesion files are saved
         # combines them and sets to 0 or 1
-        lesion_img = combine_lesions(path, lesion_str='Lesion')
+        lesion_img = combine_lesions(path_raw, lesion_str='Lesion')
+        next_subj['RawLesionSize'] = int(np.sum(lesion_img.get_fdata()))
+        next_subj['RawSize'] = lesion_img.shape
         # assert not mask_img
         # remove the skull (from t1 and mask)
         print('stripping skull')
-        file_in = find_file(path=path, include='t1', exclude=None)
+        file_in = find_file(path=path_raw, include='t1', exclude=None)
         assert len(file_in) == 1  # only a single T1 file should be found
-        file_in = os.path.join(path, file_in[0])
-        file_out = os.path.join(path, 'no_skull_mask.nii.gz')
-        mask_t1_img, mask_img = strip_skull_mask(
+        file_in = os.path.join(path_raw, file_in[0])
+        file_out = os.path.join(path_results, 'no_skull_mask.nii.gz')
+        no_skull_t1_img, mask_img = strip_skull_mask(
             file_in, file_out, savefig_dir=results_dir, ext=ext)
-        mask_lesion_img = apply_mask_to_image(mask_img, lesion_img,
+        no_skull_lesion_img = apply_mask_to_image(mask_img, lesion_img,
                                               file_out=None,
                                               savefig_dir=results_dir, ext=ext)
-        assert mask_lesion_img.shape == mask_t1_img.shape
+        assert no_skull_lesion_img.shape == no_skull_t1_img.shape
 
+        # align the image
         print('normalizing the images')
+        normalize_to_mni(file_in, file_out, template_out)
+
         import pdb; pdb.set_trace()
         next_id += next_id
+
+        # do we want to resample image?
+        # resampled_stat_img = resample_to_img(file_in, template)
+        # do we need to retreshold to make it binary mask again?
+        # resampled_mask = resample_to_img(mask, template) # clip = bool (for mask)
 
 
         # add the new image files to the path assigning the number to it
