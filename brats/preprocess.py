@@ -281,7 +281,7 @@ def get_files(directory, name='t1', ext='.nii.gz'):
         raise RuntimeError("Could not find file matching {}".format(file_card))
 
 
-def apply_mask_to_image(mask, img, file_out, savefig_dir=None, ext='.png'):
+def apply_mask_to_image(mask, img, file_out):
     # mask: mask to be applied to the image
     # img, nilearn image to which mask is to be applied to
     # masked: masked image in nilearn format
@@ -291,40 +291,21 @@ def apply_mask_to_image(mask, img, file_out, savefig_dir=None, ext='.png'):
     img_data[mask == 0] = 0
     masked = new_img_like(img, img_data, affine=None, copy_header=False)
 
-    if savefig_dir is not None:
-        plot_anat(masked,
-                title='mask', display_mode='ortho', dim=-1, draw_cross=False,
-                annotate=False)
-        plt.savefig(os.path.join(savefig_dir, '4_mask_lesion_no_skull' + ext))
     return masked
 
 
-def strip_skull_mask(file_in, t1_file_out, mask_file_out,
-                     savefig_dir=None, ext='.png'):
+def strip_skull_mask(file_in, t1_file_out, mask_file_out):
     # mask param does not seem to do what it's suppose to
     # and returns the mask
     # set sevefig_dir to None to not plot
     skullstrip = BET(in_file=file_in, out_file=t1_file_out, mask=True)
-    res = skullstrip.run()
+    skullstrip.run()
 
     # it sets all the values > 0 to 1 creating a mask
     t_img = load_img(t1_file_out)
     mask = math_img('img > 0', img=t_img)
     mask.to_filename(mask_file_out)
 
-    if savefig_dir is not None:
-        plot_anat(file_in,
-              title='original', display_mode='ortho', dim=-1, draw_cross=False,
-              annotate=False)
-        plt.savefig(os.path.join(savefig_dir, '1_original_image' + ext))
-        plot_anat(t1_file_out,
-              title='original, no skull', display_mode='ortho',
-              dim=-1, draw_cross=False, annotate=False)
-        plt.savefig(os.path.join(savefig_dir, '3_original_no_skull' + ext))
-        plot_anat(mask_file_out,
-              title='mask', display_mode='ortho', dim=-1, draw_cross=False,
-              annotate=False)
-        plt.savefig(os.path.join(savefig_dir, '2_mask_no_skull' + ext))
     return t_img, mask
 
 
@@ -359,7 +340,7 @@ def combine_lesions(path, lesion_str='Lesion'):
         return 0
 
 
-def strip_skull(file_in, file_out, plot=False):
+def strip_skull(file_in, file_out):
     ''' file_in and file_out must be of '.nii.gz' format. Need to have fsl
     installed to run'''
     skullstrip = BET()
@@ -391,8 +372,9 @@ def init_base(base_dir, file_name='subject_info.csv'):
     # returns next subject ID to be used
     file_path = os.path.join(base_dir, file_name)
     if not os.path.exists(file_path):
-        dfObj = pd.DataFrame(columns=['RawPath', 'ProcessedPath',
-                                      'NewID', 'RawSize', 'NewSize',
+        dfObj = pd.DataFrame(columns=['RawPath', 'ProcessedPath', 'NewID',
+                                      'RawSize_x', 'RawSize_y', 'RawSize_z',
+                                      'NewSize_x', 'NewSize_y', 'NewSize_z',
                                       'RawLesionSize', 'NewLesionSize'])
         dfObj.to_csv(file_path)
         return 1, dfObj
@@ -486,6 +468,7 @@ if __name__ == "__main__":
         # create output path (TODO: for now if sth goes wrong this path remains
         os.mkdir(path_results)
         os.mkdir(path_figs)
+
         # initiates info dict for the new subject
         next_subj = init_next_subj(RawPath=path_raw,
                                    ProcessedPath=path_results,
@@ -495,9 +478,9 @@ if __name__ == "__main__":
         # combines them and sets to 0 or 1
         lesion_img = combine_lesions(path_raw, lesion_str='Lesion')
         next_subj['RawLesionSize'] = int(np.sum(lesion_img.get_fdata()))
-        next_subj['RawSize_x'], next_subj['RawSize_y'], next_subj['RawSize_z'] = \
-            lesion_img.shape
-        # assert not mask_img
+        next_subj['RawSize_x'], next_subj['RawSize_y'], \
+            next_subj['RawSize_z'] = lesion_img.shape
+
         # remove the skull (from t1 and mask)
         print('stripping skull')
         file_in = find_file(path=path_raw, include='t1', exclude=None)
@@ -506,12 +489,9 @@ if __name__ == "__main__":
         t1_no_skull_file = os.path.join(path_results, 't1_no_skull.nii.gz')
         mask_no_skull_file = os.path.join(path_results, 'mask_no_skull.nii.gz')
         no_skull_t1_img, mask_img = strip_skull_mask(
-            t1_file, t1_no_skull_file, mask_no_skull_file,
-            savefig_dir=results_dir, ext=ext)
+            t1_file, t1_no_skull_file, mask_no_skull_file)
         no_skull_lesion_img = apply_mask_to_image(mask_img, lesion_img,
-                                                  file_out=None,
-                                                  savefig_dir=results_dir,
-                                                  ext=ext)
+                                                  file_out=None)
 
         # save files, plot images (?)
         no_skull_lesion_file = os.path.join(path_results,
@@ -534,6 +514,39 @@ if __name__ == "__main__":
                          no_skull_lesion_file, no_skull_norm_lesion_file,
                          template_out, transform_matrix_file)  # flirt from fsl
 
+        print('plot template')
+        plot_anat(template_out,
+                  title='template', display_mode='ortho', dim=-1,
+                  draw_cross=False, annotate=False)
+        plt.savefig(os.path.join(path_figs, '0_template' + ext))
+        print('plotting original image')
+        plot_anat(t1_file,
+                  title='original', display_mode='ortho', dim=-1,
+                  draw_cross=False, annotate=False)
+        plt.savefig(os.path.join(path_figs, '1_original_image' + ext))
+
+        print('plotting mask')
+        plot_anat(mask_no_skull_file,
+                  title='mask', display_mode='ortho', dim=-1, draw_cross=False,
+                  annotate=False)
+        plt.savefig(os.path.join(path_figs, '2_mask_no_skull' + ext))
+
+        print('plotting t1, no skull')
+        plot_anat(t1_no_skull_file,
+                  title='original, no skull', display_mode='ortho',
+                  dim=-1, draw_cross=False, annotate=False)
+        plt.savefig(os.path.join(path_figs, '3_original_no_skull' + ext))
+
+        print('plotting original and maskedlesion')
+        plot_anat(lesion_img,
+                  title='lesion', display_mode='ortho', dim=-1,
+                  draw_cross=False, annotate=False)
+        plt.savefig(os.path.join(path_figs, '4_lesion' + ext))
+        plot_anat(no_skull_lesion_img,
+                  title='lesion, mask', display_mode='ortho', dim=-1,
+                  draw_cross=False, annotate=False)
+        plt.savefig(os.path.join(path_figs, '5_mask_lesion_no_skull' + ext))
+
         print('plotting normalized images')
         plot_anat(no_skull_norm_t1_file,
                   title='t1, no skull, norm', display_mode='ortho', dim=-1,
@@ -544,6 +557,7 @@ if __name__ == "__main__":
                   title='lesion, no skull, norm', display_mode='ortho', dim=-1,
                   draw_cross=False, annotate=False)
         plt.savefig(os.path.join(path_figs, '7_lesion_no_skull_norm' + ext))
+        plt.close('all')
 
         no_skull_norm_lesion_img = load_img(no_skull_norm_lesion_file)
         no_skull_norm_lesion_data = no_skull_norm_lesion_img.get_fdata()
@@ -551,18 +565,11 @@ if __name__ == "__main__":
 
         no_skull_norm_t1_img = load_img(no_skull_norm_t1_file)
 
-        plot_anat(template_out,
-                  title='template', display_mode='ortho', dim=-1,
-                  draw_cross=False, annotate=False)
-        plt.savefig(os.path.join(path_figs, '0_template' + ext))
-
         next_subj['NewSize_x'], next_subj['NewSize_y'], \
-            next_subj['NewSize_<'] = no_skull_norm_lesion_data.shape
-        df = pd.DataFrame.from_dict(next_subj)
+            next_subj['NewSize_z'] = no_skull_norm_lesion_data.shape
+        df = pd.DataFrame(next_subj, index=[next_id])
         df.to_csv(os.path.join(results_dir, csv_file), mode='a', header=False)
-        next_id += next_id
-        import pdb; pdb.set_trace()
-
+        next_id += 1
         # do we want to resample image?
         # resampled_stat_img = resample_to_img(file_in, template)
         # do we need to retreshold to make it binary mask again?
