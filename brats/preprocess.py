@@ -408,8 +408,9 @@ def init_base(base_dir, file_name='subject_info.csv'):
 def init_next_subj(**kwargs):
     # initiates new dictionary with the values to save:
     next_subj = dict.fromkeys(['RawPath', 'ProcessedPath', 'NewID',
-                               'RawSize', 'NewSize', 'RawLesionSize',
-                               'NewLesionSize'], None)
+                               'RawSize_x', 'RawSize_y', 'RawSize_z',
+                               'NewSize_x', 'NewSize_y', 'NewSize_z',
+                               'RawLesionSize', 'NewLesionSize'], None)
     for key, value in kwargs.items():
         next_subj[key] = value
     return next_subj
@@ -421,7 +422,7 @@ def normalize_to_mni(t1_in, t1_out, lesion_in, lesion_out,
     # transforms the t1_in to the same space as template_out, saves the
     # transformed image under t1_out and the transformation matrix under
     # matrix_out
-    returncode = subprocess.run([
+    subprocess.run([
             "flirt",
             "-in", t1_in,
             "-out", t1_out,
@@ -474,7 +475,8 @@ if __name__ == "__main__":
 
     if rerun_all:
         clean_all(results_dir)
-    next_id, df_info = init_base(results_dir)
+    csv_file = 'subject_info.csv'
+    next_id, df_info = init_base(results_dir, file_name=csv_file)
 
     for idx, path_raw in enumerate(path_list):
         print(f'{idx+1}/{n_dirs}, subject {next_id}, working on {path_raw}')
@@ -493,7 +495,8 @@ if __name__ == "__main__":
         # combines them and sets to 0 or 1
         lesion_img = combine_lesions(path_raw, lesion_str='Lesion')
         next_subj['RawLesionSize'] = int(np.sum(lesion_img.get_fdata()))
-        next_subj['RawSize'] = lesion_img.shape
+        next_subj['RawSize_x'], next_subj['RawSize_y'], next_subj['RawSize_z'] = \
+            lesion_img.shape
         # assert not mask_img
         # remove the skull (from t1 and mask)
         print('stripping skull')
@@ -553,9 +556,12 @@ if __name__ == "__main__":
                   draw_cross=False, annotate=False)
         plt.savefig(os.path.join(path_figs, '0_template' + ext))
 
-        next_subj['NewSize'] = no_skull_norm_lesion_data.shape
-
+        next_subj['NewSize_x'], next_subj['NewSize_y'], \
+            next_subj['NewSize_<'] = no_skull_norm_lesion_data.shape
+        df = pd.DataFrame.from_dict(next_subj)
+        df.to_csv(os.path.join(results_dir, csv_file), mode='a', header=False)
         next_id += next_id
+        import pdb; pdb.set_trace()
 
         # do we want to resample image?
         # resampled_stat_img = resample_to_img(file_in, template)
