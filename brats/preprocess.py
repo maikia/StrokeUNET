@@ -14,10 +14,8 @@ import matplotlib.pylab as plt
 from nilearn.plotting import plot_anat
 import numpy as np
 from nipype.interfaces.ants import N4BiasFieldCorrection
-# import SimpleITK as sitk
 from nilearn.image import new_img_like
-from nilearn.datasets import load_mni152_template
-from nilearn.image import resample_to_img
+from nilearn import plotting
 import subprocess
 
 
@@ -556,7 +554,15 @@ if __name__ == "__main__":
         plot_anat(no_skull_norm_lesion_file,
                   title='lesion, no skull, norm', display_mode='ortho', dim=-1,
                   draw_cross=False, annotate=False)
-        plt.savefig(os.path.join(path_figs, '7_lesion_no_skull_norm' + ext))
+
+        plotting.plot_roi(lesion_img, bg_img=t1_file, title="before",
+                          draw_cross=False, cmap='autumn')
+        plt.savefig(os.path.join(path_figs, '8_before_t1_lesion' + ext))
+
+        plotting.plot_roi(no_skull_norm_lesion_file,
+                          bg_img=no_skull_norm_t1_file, title="after",
+                          draw_cross=False, cmap='autumn')
+        plt.savefig(os.path.join(path_figs, '9_after_t1_lesion' + ext))
         plt.close('all')
 
         no_skull_norm_lesion_img = load_img(no_skull_norm_lesion_file)
