@@ -180,7 +180,6 @@ def init_base(path, column_names, file_name='subject_info.csv'):
     file_name: string
         name of the .csv file, ending on .csv. Eg. subjects.csv
 
-
     Returns
     -------
     subj_id: int
@@ -241,11 +240,11 @@ def normalize_to_mni(t1_in, t1_out, template, matrix_out):
             "flirt",
             "-in", t1_in,
             "-out", t1_out,
-            "-ref", template_out,
+            "-ref", template,
             "-omat", matrix_out])
 
 
-def normalize_to_transform(t1_in, t1_out, template_out, matrix_in):
+def normalize_to_transform(t1_in, t1_out, template, matrix_in):
     """normalizes the T1 image to the given tranformation.
     ----------
     t1_in: path to the nifti file
@@ -267,7 +266,7 @@ def normalize_to_transform(t1_in, t1_out, template_out, matrix_in):
                     "-in", t1_in,
                     "-out", t1_out,
                     "-applyxfm", "-init", matrix_in,
-                    "-ref", template_out])
+                    "-ref", template])
 
     # converts mask to binary. The higher threshold the smaller the mask
     subprocess.run([
@@ -276,51 +275,84 @@ def normalize_to_transform(t1_in, t1_out, template_out, matrix_in):
                     "-bin", t1_out])
 
 
-if __name__ == "__main__":
-    # loop through available images
-    #   unify all the available masks to a single mask with only 1s and 0s
-    #   remove the skull (from t1 and mask)
-    #   move all the images (t1 and masks) to mni space
-    #   noramalize images (same average color) ??
-    column_names = ['RawPath', 'ProcessedPath', 'NewID',
-                    'RawSize_x', 'RawSize_y', 'RawSize_z',
-                    'NewSize_x', 'NewSize_y', 'NewSize_z',
-                    'RawLesionSize', 'NewLesionSize']
+def read_dataset(name):
+    """reads the info for the dataset with the name
+    ----------
+    name: string
+       name of the dataset to use
+
+    Returns
+    -------
+    dict: dictionary
+        dictionary info for that dataset
+    """
     # first data set
-    dataset = {
+    dataset1 = {
+        "name": 'dataset_1',
         "raw_dir": '../../data/ATLAS_R1.1/',
         "lesion_str": 'Lesion',
         "t1_inc_str": 't1',
         "t1_exc_str": None
     }
+    if name == dataset1['name']:
+        return dataset1
+
     # second data set
     dataset2 = {
+        "name": 'dataset_2',
         "raw_dir": '../../data/BIDS_lesions_zip/',
         "lesion_str": 'lesion',
         "t1_inc_str": 'T1',
         "t1_exc_str": 'label'
     }
-    data = dataset
+    if name == dataset2['name']:
+        return dataset2
 
-    raw_dir_healthy = '../../data/healthy'
-    results_dir = 'data/preprocessed/'
-    ext = '.png'
-    # careful, if set to True, all the previous preprocessing saved
-    # data will be removed
+    # third dataset (healthy patinets)
+    # here all the scans are in the single directory
+    dataset3 = {
+        "name": 'dataset_healthy',
+        "raw_dir": '../../data/healthy/',
+        "lesion_str": 'lesion',
+        "t1_inc_str": 'T1',
+        "t1_exc_str": 'label'
+    }
+    if name == dataset3['name']:
+        return dataset3
+    return None
+
+
+if __name__ == "__main__":
+    dataset_name = 'dataset_1'  # also dataset_2, TODO: dataset_healthy
+    # rerun_all: if set to True, all the preprocessed data saved
+    # so far will be removed
     rerun_all = True  # careful !!
+    ext_fig = '.png'
+    csv_file = 'subject_info.csv'
+
+    # data to be saved in the .csv file
+    column_names = ['RawPath', 'ProcessedPath', 'NewID',
+                    'RawSize_x', 'RawSize_y', 'RawSize_z',
+                    'NewSize_x', 'NewSize_y', 'NewSize_z',
+                    'RawLesionSize', 'NewLesionSize']
+    results_dir = 'data/preprocessed/'
 
     # find other mni templates at:
     # http://www.bic.mni.mcgill.ca/ServicesAtlases/ICBM152NLin2009
-    template_out = os.path.join('../../data/',
-                                'mne_template',
-                                'mni_icbm152_t1_tal_nlin_asym_09c.nii.gz')
+    template_brain = os.path.join('../../data/',
+                                  'mne_template',
+                                  'mni_icbm152_t1_tal_nlin_asym_09c.nii.gz')
 
+    data = read_dataset(dataset_name)
+    assert data is not None
+
+    # find all the directories with the 'nii.gz' files
     path_list = find_dirs(raw_dir=data['raw_dir'], ext='.nii.gz')
     n_dirs = len(path_list)
 
     if rerun_all:
         clean_all(results_dir)
-    csv_file = 'subject_info.csv'
+
     next_id, df_info = init_base(results_dir, column_names=column_names,
                                  file_name=csv_file)
 
@@ -378,30 +410,30 @@ if __name__ == "__main__":
 
         transform_matrix_file = os.path.join(path_results, 'matrix.mat')
 
-        normalize_to_mni(t1_no_skull_file, no_skull_norm_t1_file, template_out,
-                         transform_matrix_file)  # uses flirt from fsl
+        normalize_to_mni(t1_no_skull_file, no_skull_norm_t1_file,
+                         template_brain, transform_matrix_file)
         normalize_to_transform(no_skull_lesion_file, no_skull_norm_lesion_file,
-                               template_out, transform_matrix_file)
+                               template_brain, transform_matrix_file)
 
         print('plot template')
-        plotting.plot_stat_map(template_out,
+        plotting.plot_stat_map(template_brain,
                                title='template', display_mode='ortho', dim=-1,
                                draw_cross=False, annotate=False, bg_img=None,
                                cmap='Greys_r')
-        plt.savefig(os.path.join(path_figs, '0_template' + ext))
+        plt.savefig(os.path.join(path_figs, '0_template' + ext_fig))
         print('plotting original image')
         plotting.plot_stat_map(t1_file,
                                title='original', display_mode='ortho', dim=-1,
                                draw_cross=False, annotate=False, bg_img=None,
                                cmap='Greys_r')
-        plt.savefig(os.path.join(path_figs, '1_original_image' + ext))
+        plt.savefig(os.path.join(path_figs, '1_original_image' + ext_fig))
 
         print('plotting mask')
         plotting.plot_stat_map(mask_no_skull_file,
                                title='mask', display_mode='ortho', dim=-1,
                                draw_cross=False, annotate=False, bg_img=None,
                                cmap='autumn_r')
-        plt.savefig(os.path.join(path_figs, '2_mask_no_skull' + ext))
+        plt.savefig(os.path.join(path_figs, '2_mask_no_skull' + ext_fig))
 
         print('plotting t1, no skull')
         plotting.plot_stat_map(t1_no_skull_file,
@@ -409,20 +441,20 @@ if __name__ == "__main__":
                                display_mode='ortho', dim=-1, draw_cross=False,
                                annotate=False, bg_img=None,
                                cmap='Greys_r')
-        plt.savefig(os.path.join(path_figs, '3_original_no_skull' + ext))
+        plt.savefig(os.path.join(path_figs, '3_original_no_skull' + ext_fig))
 
         print('plotting original and maskedlesion')
         plotting.plot_stat_map(lesion_img,
                                title='lesion', display_mode='ortho', dim=-1,
                                draw_cross=False, annotate=False, bg_img=None,
                                cmap='autumn_r')
-        plt.savefig(os.path.join(path_figs, '4_lesion' + ext))
+        plt.savefig(os.path.join(path_figs, '4_lesion' + ext_fig))
         plotting.plot_stat_map(no_skull_lesion_img,
                                title='lesion, mask', display_mode='ortho',
                                dim=-1, draw_cross=False, annotate=False,
                                bg_img=None,
                                cmap='autumn_r')
-        plt.savefig(os.path.join(path_figs, '5_mask_lesion_no_skull' + ext))
+        plt.savefig(os.path.join(path_figs, '5_mask_lesion_no_skull' + ext_fig))
 
         print('plotting normalized images')
         plotting.plot_stat_map(no_skull_norm_t1_file,
@@ -430,23 +462,23 @@ if __name__ == "__main__":
                                display_mode='ortho', dim=-1,
                                draw_cross=False, annotate=False, bg_img=None,
                                cmap='Greys_r')
-        plt.savefig(os.path.join(path_figs, '6_t1_no_skull_norm' + ext))
+        plt.savefig(os.path.join(path_figs, '6_t1_no_skull_norm' + ext_fig))
 
         plotting.plot_stat_map(no_skull_norm_lesion_file,
                                title='lesion, no skull, norm',
                                display_mode='ortho', dim=-1,
                                draw_cross=False, annotate=False, bg_img=None,
                                cmap='autumn_r')
-        plt.savefig(os.path.join(path_figs, '7_lesion_no_skull_norm' + ext))
+        plt.savefig(os.path.join(path_figs, '7_lesion_no_skull_norm' + ext_fig))
 
         plotting.plot_roi(lesion_img, bg_img=t1_file, title="before",
                           draw_cross=False, cmap='autumn')
-        plt.savefig(os.path.join(path_figs, '8_before_t1_lesion' + ext))
+        plt.savefig(os.path.join(path_figs, '8_before_t1_lesion' + ext_fig))
 
         plotting.plot_roi(no_skull_norm_lesion_file,
                           bg_img=no_skull_norm_t1_file, title="after",
                           draw_cross=False, cmap='autumn')
-        plt.savefig(os.path.join(path_figs, '9_after_t1_lesion' + ext))
+        plt.savefig(os.path.join(path_figs, '9_after_t1_lesion' + ext_fig))
         plt.close('all')
 
         no_skull_norm_lesion_img = load_img(no_skull_norm_lesion_file)
