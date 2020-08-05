@@ -1,302 +1,84 @@
 """
-Tools for converting, normalizing, and fixing the stroke data.
+Tools for converting, normalizing, and fixing the T1 brain scans and
+corresponding lesion data.
 """
-
-from nipype.interfaces.fsl import BET
-import glob
 import os
-import pandas as pd
-import warnings
 import shutil
-
-from nilearn.image import load_img, math_img
-import matplotlib.pylab as plt
-from nilearn.plotting import plot_anat
-import numpy as np
-from nipype.interfaces.ants import N4BiasFieldCorrection
-from nilearn.image import new_img_like
-from nilearn import plotting
 import subprocess
+import warnings
+
+import matplotlib.pylab as plt
+import numpy as np
+import pandas as pd
+
+from nilearn import plotting
+from nilearn.image import load_img, math_img, new_img_like
+from nipype.interfaces.fsl import BET
 
 
-def correct_bias(in_file, out_file, image_type):  # =sitk.sitkFloat64):
+def find_dirs(raw_dir='data/', ext='.nii.gz'):
+    """searches for the directories within the given directory and up the tree
+    which contain at least one file with a given extension.
+    ----------
+    raw_dir : string or path to the directory to be searched
+    ext : string, extension to the searched for files, eg '.png' :
+    Returns
+    -------
+    path_list
+        list of the directories which contain at least a single file with `ext`
+        extension
     """
-    Corrects the bias using ANTs N4BiasFieldCorrection. If this fails, will
-    then attempt to correct bias using SimpleITK
-    :param in_file: input file path
-    :param out_file: output file path
-    :return: file path to the bias corrected image
-    """
-    correct = N4BiasFieldCorrection()
-    correct.inputs.input_image = in_file
-    correct.inputs.output_image = out_file
-    try:
-        done = correct.run()
-        return done.outputs.output_image
-    except IOError:
-        warnings.warn(RuntimeWarning("ANTs N4BIasFieldCorrection could not be "
-                                     "found. Will try using SimpleITK for "
-                                     "bias field correction which will take "
-                                     "much longer. To fix this problem, add "
-                                     "N4BiasFieldCorrection to your PATH "
-                                     "system variable. (example: "
-                                     "EXPORT PATH=${PATH}:/path/to/ants/bin)"
-                                     ))
-        input_image = sitk.ReadImage(in_file, image_type)
-        output_image = sitk.N4BiasFieldCorrection(input_image, input_image > 0)
-        sitk.WriteImage(output_image, out_file)
-        return os.path.abspath(out_file)
-
-
-def rescale(in_file, out_file, minimum=0, maximum=20000):
-    image = sitk.ReadImage(in_file)
-    sitk.WriteImage(sitk.RescaleIntensity(image, minimum, maximum), out_file)
-    return os.path.abspath(out_file)
-
-
-def normalize_image(in_file, out_file, bias_correction=True):
-    """ TODO: for now no normalization is done, add it + add the doc """
-    if bias_correction:
-        pass
-        # correct_bias(in_file, out_file)
-    else:
-        shutil.copy(in_file, out_file)
-    return out_file
-
-
-def convert_stroke_data(file_dir, out_dir, scan_name='t1',
-                        mask_name='LesionSmooth'):
-    """
-    Copies and renames the data files to run within this program settings
-    it also changes all the nonzero values in the mask to 1
-
-    file_dir: where the files for the single subjects are stored
-    out_dir: where the files should be copied to
-    scan_name: name which is included in the name of the mri scan
-    mask_name: name which is included in the name of the lesion image(s)
-
-    Note1: there might be more than one mask stored for one patients. Those
-    masks will be collapsed into one
-    Note2: some patients have scans at multiple times. Those scans will be
-    considered as separate patient
-    the output image masks will always consist only of [0, 1]s
-
-    """
-
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
-    # copy the true image
-    out_file_t1 = os.path.abspath(os.path.join(out_dir, "t1.nii.gz"))
-    mri_file = get_files(file_dir, scan_name, ext='nii.gz')
-
-    # mri_image = sitk.ReadImage(out_file_t1)
-    # mri_array = sitk.GetArrayFromImage(mri_image)
-    assert len(mri_file) == 1
-
-    shutil.copy(mri_file[0], out_file_t1)
-
-    # mask
-    truth_files = get_files(file_dir, name=mask_name)
-    assert len(truth_files) >= 1
-    out_file_path = os.path.abspath(os.path.join(out_dir, "truth.nii.gz"))
-    # if multiple lesions, sum all into one mask
-    masks = []
-    for mask in truth_files:
-        truth_image = sitk.ReadImage(mask)
-        truth_array = sitk.GetArrayFromImage(truth_image)
-        masks.append(truth_array)
-    truth_array = sum(masks)
-    # set all of the positive values in the mask to 1
-    truth_array[truth_array > 0] = 1
-    assert len(np.unique(truth_array)) in [1, 2]
-
-    truth_mask = sitk.GetImageFromArray(truth_array, isVector=False)
-    sitk.WriteImage(truth_mask, out_file_path)
-
-
-def convert_data_new(stroke_folder='../data/BIDS_lesions_zip/',
-                     out_folder='data/preprocessed'):
-    """
-    Finds the subjects data and writes it to a given output folder in a
-    consistent format.
-    :param stroke_folder: folder containing the data with the following format:
-                          |-stroke_folder
-                            |_ <subject_name1>
-                                |_<subject_name1>nii.gz
-                                |_<subject_name1>.gz
-    Note: there might be multiple folders at each level.
-    """
-    # create data/preprocessed directory with files t1 and truth
-    subj_dirs = glob.glob(os.path.join(stroke_folder, "*"))
-    subj_dirs = [subj_dir for subj_dir in subj_dirs if
-                 os.path.isdir(subj_dir)]
-    subjects = 0
-
-    print('found {} subject directories'.format(len(subj_dirs)))
-
-    for subj_dir in subj_dirs:
-        # subject name
-        subject = os.path.basename(subj_dir)
-        subjects += 1
-
-        dir_name = 'new_' + subject
-        new_subj_dir = os.path.join(out_folder, dir_name)
-
-        convert_stroke_data(file_dir=subj_dir, out_dir=new_subj_dir,
-                            scan_name='T1w.', mask_name='label-lesion')
-    print('Copied data for {} subjects'.format(subjects))
-
-
-def find_scan_dirs(raw_dir='../../data/ATLAS_R1.1/'):
-    """
-    searches for the directories within the given directory and up the tree
-    with the scan data (ending on '.nii.gz').
-    :raw_dir: directory where to search for the t1 scans
-    output: list of directories with scans
-    """
-    print(f'Wait. I am searching for "nii.gz" files in {raw_dir}')
+    print(f'Wait. I am searching for "{ext}" files in {raw_dir}')
     path_list = []
     for dirname, dirnames, filenames in os.walk(raw_dir):
-        # save directories with all filenames ending on '.nii.gz'
+        # save directories with all filenames ending on `ext`
         for filename in filenames:
-            if filename[-7:] == '.nii.gz':
+            if filename[-len(ext):] == ext:
                 path_list.append(dirname)
                 break
     return path_list
 
 
-def convert_data_old(stroke_folder='../data/ATLAS_R1.1/',
-                     out_folder='data/preprocessed'):
+def apply_mask_to_image(mask, img):
+    """given a mask (in a form of nilearn image) it applies it to the img and
+        returns the masked img. That is: all the values equals to 0 in the mask
+        will now be equal to 0 in the masked. The shape of the data remains the
+        same.
+    ----------
+    mask : nilearn image, binary
+    img : nilearn image
+    Returns
+    -------
+    masked
+        img masked with a mask
     """
-    Finds the subjects data and writes it to a given output folder in a
-    consistent format.
-    :param stroke_folder: folder containing the data with the following format:
-                          |-stroke_folder
-                            |_ Site1
-                                |_ <subject_name1>
-                                    |_t01
-                                        |_<subject_name1>_t1....nii.gz
-                                        |_<subject_name1>_LesionSmooth...nii.gz
-    Note: there might be multiple folders at each level.
-    """
-    # create data/preprocessed directory with files t1 and truth
-    site_dirs = glob.glob(os.path.join(stroke_folder, "*"))
-    site_dirs = [site_dir for site_dir in site_dirs if os.path.isdir(site_dir)]
-    files, subjects = 0, 0
-    print('preparing: ', site_dirs)
-    print('found {} site directories'.format(len(site_dirs)))
-    for site_dir in site_dirs:
-        subj_dirs = glob.glob(os.path.join(site_dir, "*"))
-        subj_dirs = [subj_dir for subj_dir in subj_dirs if
-                     os.path.isdir(subj_dir)]
-        site = site_dir.split('/')[-1]
-        print('found {} subject directories in {}'.format(len(subj_dirs),
-                                                          site))
-        for subj_dir in subj_dirs:
-            # subject name
-            subject = os.path.basename(subj_dir)
-            import pdb; pdb.set_trace()
-
-            time_dirs = glob.glob(os.path.join(subj_dir, "*"))
-            time_dirs = [time_dir for time_dir in time_dirs if
-                         os.path.isdir(time_dir)]
-            subjects += 1
-
-            for time_dir in time_dirs:
-                dir_name = 's' + site[-1] + '_' + subject + '_t' + time_dir[-1]
-                new_subj_dir = os.path.join(out_folder, dir_name)
-
-                convert_stroke_data(file_dir=time_dir, out_dir=new_subj_dir)
-                files += 1
-    print('Copied data for {} subjects, {} scans'.format(subjects, files))
-
-
-def convert_healthy_data(healthy_folder='../data/healthy',
-                         out_folder='data/preprocessed/healthy'):
-    """
-    TODO: correct the doc
-    Preprocesses the BRATS data and writes it to a given output folder. Assumes
-     the original folder structure.
-    :param brats_folder: folder containing the original brats data
-    :param out_folder: output folder to which the preprocessed data will be
-    written
-    :param overwrite: set to True in order to redo all the preprocessing
-    :param no_bias_correction_modalities: performing bias correction could
-    reduce the signal of certain modalities. If
-    concerned about a reduction in signal for a specific modality, specify by
-    including the given modality in a list
-    or tuple.
-    :return:
-    """
-    """
-    Copies and renames the data files to run within this program settings
-    for the healthy set of mri images. For each scan it adds the mask of the
-    given
-    size filled with 0s to signify no lesion
-    It is assumed that the healthy patient files are named
-    'sub_>number_t1_final<.nii.gz'
-    """
-    print('preparing: ', glob.glob(os.path.join(healthy_folder, "*")))
-    # copy the file + filename
-    # create out folder if does not already exist
-    if not os.path.exists(out_folder):
-        os.makedirs(out_folder)
-
-    # create empty mask, same for all healthy patients
-    # TODO: change dim to variable:
-    empty_mask = make_empty_mask(dim=[189, 233, 197])
-    for subject_file in glob.glob(os.path.join(healthy_folder, "*")):
-        subject = os.path.basename(subject_file)
-        new_subject_dir = os.path.join(out_folder, subject.split('_', 2)[1])
-        if not os.path.exists(new_subject_dir):
-            os.makedirs(new_subject_dir)
-        out_file_t1 = os.path.abspath(os.path.join(new_subject_dir,
-                                                   "t1.nii.gz"))
-
-        shutil.copy(subject_file, out_file_t1)
-
-        # paste the mask with no lesion here
-        out_file_mask = os.path.abspath(os.path.join(new_subject_dir,
-                                                     "truth.nii.gz"))
-        sitk.WriteImage(empty_mask, out_file_mask)
-
-
-def make_empty_mask(dim=[189, 233, 197]):
-    array_mask = np.zeros([dim[0], dim[1], dim[2]])
-    empty_mask = sitk.GetImageFromArray(array_mask, isVector=False)
-    return empty_mask
-
-
-def get_files(directory, name='t1', ext='.nii.gz'):
-    # In the directory, it finds all the files including the given name and
-    # with the givent extension ext
-
-    file_card = os.path.join(directory, "*" + name + "*" + ext)
-    try:
-        return glob.glob(file_card)
-    except IndexError:
-        raise RuntimeError("Could not find file matching {}".format(file_card))
-
-
-def apply_mask_to_image(mask, img, file_out):
-    # mask: mask to be applied to the image
-    # img, nilearn image to which mask is to be applied to
-    # masked: masked image in nilearn format
-    # t_img = load_img(mask)
     assert mask.shape == img.shape
     img_data = img.get_fdata()
-    img_data[mask == 0] = 0
+    mask_data = mask.get_fdata()
+    img_data[mask_data == 0] = 0
     masked = new_img_like(img, img_data, affine=None, copy_header=False)
-
     return masked
 
 
-def strip_skull_mask(file_in, t1_file_out, mask_file_out):
-    # mask param does not seem to do what it's suppose to
-    # and returns the mask
-    # set sevefig_dir to None to not plot
-    skullstrip = BET(in_file=file_in, out_file=t1_file_out, mask=True)
+def strip_skull_mask(t1_file_in, t1_file_out, mask_file_out):
+    """strips the skull from the T1 MRI image
+    ----------
+    t1_file_in: an existing file name
+        path nifti file with the T1 MRI image with the skull
+    t1_file_out: path to the file name
+        path where the new image with skull stripped is to be saved
+    mask_file_out : path to the file name
+        path where the calculated mask used to strip the t1_file_in image is
+        to be saved
+
+    Returns
+    -------
+    t_img: nilearn image
+        t1 with the skull stripped of
+    mask: nilearn image
+        the calculated mask
+    """
+    skullstrip = BET(in_file=t1_file_in, out_file=t1_file_out, mask=False)
     skullstrip.run()
 
     # it sets all the values > 0 to 1 creating a mask
@@ -430,9 +212,24 @@ if __name__ == "__main__":
     #   unify all the available masks to a single mask with only 1s and 0s
     #   remove the skull (from t1 and mask)
     #   move all the images (t1 and masks) to mni space
-    #   noramlize images (same average color) ??
-    raw_dir = '../../data/ATLAS_R1.1/'  # first data set
-    raw_dir2 = '../../data/BIDS_lesions_zip/'  # second data set
+    #   noramalize images (same average color) ??
+
+    ### first data set
+    dataset = {
+        "raw_dir": '../../data/ATLAS_R1.1/',
+        "lesion_str": 'Lesion',
+        "t1_inc_str": 't1',
+        "t1_exc_str": None
+    }
+    # second data set
+    dataset2 = {
+        "raw_dir": '../../data/BIDS_lesions_zip/',
+        "lesion_str": 'lesion',
+        "t1_inc_str": 'T1',
+        "t1_exc_str": 'label'
+    }
+    data = dataset
+
     raw_dir_healthy = '../../data/healthy'
     results_dir = 'data/preprocessed/'
     ext = '.png'
@@ -440,17 +237,13 @@ if __name__ == "__main__":
     # data will be removed
     rerun_all = True  # careful !!
 
-    # save the template mni brain locally
-    # template = load_mni152_template()
     # find other mni templates at:
     # http://www.bic.mni.mcgill.ca/ServicesAtlases/ICBM152NLin2009
     template_out = os.path.join('../../data/',
                                 'mne_template',
                                 'mni_icbm152_t1_tal_nlin_asym_09c.nii.gz')
-    # template = load_img(template_out)
-    # template_mni.nii.gz'
 
-    path_list = find_scan_dirs(raw_dir)
+    path_list = find_dirs(raw_dir=data['raw_dir'], ext='.nii.gz')
     n_dirs = len(path_list)
 
     if rerun_all:
@@ -474,22 +267,26 @@ if __name__ == "__main__":
 
         # check if multiple lesion files are saved
         # combines them and sets to 0 or 1
-        lesion_img = combine_lesions(path_raw, lesion_str='Lesion')
+        lesion_img = combine_lesions(path_raw, lesion_str=data['lesion_str'])
         next_subj['RawLesionSize'] = int(np.sum(lesion_img.get_fdata()))
         next_subj['RawSize_x'], next_subj['RawSize_y'], \
             next_subj['RawSize_z'] = lesion_img.shape
 
         # remove the skull (from t1 and mask)
         print('stripping skull')
-        file_in = find_file(path=path_raw, include='t1', exclude=None)
+        file_in = find_file(path=path_raw,
+                            include=data['t1_inc_str'],
+                            exclude=data['t1_exc_str'])
         assert len(file_in) == 1  # only a single T1 file should be found
         t1_file = os.path.join(path_raw, file_in[0])
         t1_no_skull_file = os.path.join(path_results, 't1_no_skull.nii.gz')
         mask_no_skull_file = os.path.join(path_results, 'mask_no_skull.nii.gz')
+        # import pdb; pdb.set_trace()
+        # correct_bias(t1_file, 'temp.nii.gz')
+
         no_skull_t1_img, mask_img = strip_skull_mask(
             t1_file, t1_no_skull_file, mask_no_skull_file)
-        no_skull_lesion_img = apply_mask_to_image(mask_img, lesion_img,
-                                                  file_out=None)
+        no_skull_lesion_img = apply_mask_to_image(mask_img, lesion_img)
 
         # save files, plot images (?)
         no_skull_lesion_file = os.path.join(path_results,
@@ -513,47 +310,52 @@ if __name__ == "__main__":
                          template_out, transform_matrix_file)  # flirt from fsl
 
         print('plot template')
-        plot_anat(template_out,
-                  title='template', display_mode='ortho', dim=-1,
-                  draw_cross=False, annotate=False)
+        plotting.plot_stat_map(template_out,
+                               title='template', display_mode='ortho', dim=-1,
+                               draw_cross=False, annotate=False, bg_img=None)
         plt.savefig(os.path.join(path_figs, '0_template' + ext))
         print('plotting original image')
-        plot_anat(t1_file,
-                  title='original', display_mode='ortho', dim=-1,
-                  draw_cross=False, annotate=False)
+        plotting.plot_stat_map(t1_file,
+                               title='original', display_mode='ortho', dim=-1,
+                               draw_cross=False, annotate=False, bg_img=None)
         plt.savefig(os.path.join(path_figs, '1_original_image' + ext))
 
         print('plotting mask')
-        plot_anat(mask_no_skull_file,
-                  title='mask', display_mode='ortho', dim=-1, draw_cross=False,
-                  annotate=False)
+        plotting.plot_stat_map(mask_no_skull_file,
+                               title='mask', display_mode='ortho', dim=-1,
+                               draw_cross=False, annotate=False, bg_img=None)
         plt.savefig(os.path.join(path_figs, '2_mask_no_skull' + ext))
 
         print('plotting t1, no skull')
-        plot_anat(t1_no_skull_file,
-                  title='original, no skull', display_mode='ortho',
-                  dim=-1, draw_cross=False, annotate=False)
+        plotting.plot_stat_map(t1_no_skull_file,
+                               title='original, no skull',
+                               display_mode='ortho', dim=-1, draw_cross=False,
+                               annotate=False, bg_img=None)
         plt.savefig(os.path.join(path_figs, '3_original_no_skull' + ext))
 
         print('plotting original and maskedlesion')
-        plot_anat(lesion_img,
-                  title='lesion', display_mode='ortho', dim=-1,
-                  draw_cross=False, annotate=False)
+        plotting.plot_stat_map(lesion_img,
+                               title='lesion', display_mode='ortho', dim=-1,
+                               draw_cross=False, annotate=False, bg_img=None)
         plt.savefig(os.path.join(path_figs, '4_lesion' + ext))
-        plot_anat(no_skull_lesion_img,
-                  title='lesion, mask', display_mode='ortho', dim=-1,
-                  draw_cross=False, annotate=False)
+        plotting.plot_stat_map(no_skull_lesion_img,
+                               title='lesion, mask', display_mode='ortho',
+                               dim=-1, draw_cross=False, annotate=False,
+                               bg_img=None)
         plt.savefig(os.path.join(path_figs, '5_mask_lesion_no_skull' + ext))
 
         print('plotting normalized images')
-        plot_anat(no_skull_norm_t1_file,
-                  title='t1, no skull, norm', display_mode='ortho', dim=-1,
-                  draw_cross=False, annotate=False)
+        plotting.plot_stat_map(no_skull_norm_t1_file,
+                               title='t1, no skull, norm',
+                               display_mode='ortho', dim=-1,
+                               draw_cross=False, annotate=False, bg_img=None)
         plt.savefig(os.path.join(path_figs, '6_t1_no_skull_norm' + ext))
 
-        plot_anat(no_skull_norm_lesion_file,
-                  title='lesion, no skull, norm', display_mode='ortho', dim=-1,
-                  draw_cross=False, annotate=False)
+        plotting.plot_stat_map(no_skull_norm_lesion_file,
+                               title='lesion, no skull, norm',
+                               display_mode='ortho', dim=-1,
+                               draw_cross=False, annotate=False, bg_img=None)
+        plt.savefig(os.path.join(path_figs, '7_lesion_no_skull_norm' + ext))
 
         plotting.plot_roi(lesion_img, bg_img=t1_file, title="before",
                           draw_cross=False, cmap='autumn')
@@ -613,3 +415,18 @@ if __name__ == "__main__":
     # using FSL topup command
     # 2. align to a standard space like MNI: (scans and lesions)
     # 3. remove the skull
+
+
+    # TODO:
+    # add option if no lesion: healthy patient. create empty mask
+    #
+    # more?
+    # - shall we be correcting bias?
+    # - shall we be normalizing images?
+    #
+    # add notes:
+    # Note1: there might be more than one mask stored for one patients. Those
+    # masks will be collapsed into one
+    # Note2: some patients have scans at multiple times. Those scans will be
+    # considered as separate patient
+    # the output image masks will always consist only of [0, 1]s
