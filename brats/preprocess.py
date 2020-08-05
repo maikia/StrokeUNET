@@ -277,6 +277,12 @@ def normalize_to_transform(t1_in, t1_out, template, matrix_in):
 
 def read_dataset(name):
     """reads the info for the dataset with the name
+       Note1: sometimes there is more than one lesion stored for one patients.
+       Those lesions will be collapsed into one
+
+       Note2: some patients have scans at multiple times. Those scans will be
+       considered as separate patient the output image masks will always
+       consist only of [0, 1]s
     ----------
     name: string
        name of the dataset to use
@@ -322,10 +328,27 @@ def read_dataset(name):
     return None
 
 
+def plot_t1(path_t1, title, fig_dir, fig_file):
+    plotting.plot_stat_map(path_t1, title=title,
+                           display_mode='ortho', dim=-1,
+                           draw_cross=False, annotate=False, bg_img=None,
+                           cmap='Greys_r')
+    plt.savefig(os.path.join(fig_dir,fig_file))
+
+
+def plot_mask(path_mask, title, fig_dir, fig_file):
+    plotting.plot_stat_map(path_mask, title=title,
+                           display_mode='ortho', dim=-1,
+                           draw_cross=False, annotate=False, bg_img=None,
+                           cmap='autumn_r')
+    plt.savefig(os.path.join(fig_dir,fig_file))
+
+
 if __name__ == "__main__":
     dataset_name = 'dataset_1'  # also dataset_2, TODO: dataset_healthy
     # rerun_all: if set to True, all the preprocessed data saved
     # so far will be removed
+    # TODO: test for rerun_all = False
     rerun_all = True  # careful !!
     ext_fig = '.png'
     csv_file = 'subject_info.csv'
@@ -337,7 +360,7 @@ if __name__ == "__main__":
                     'RawLesionSize', 'NewLesionSize']
     results_dir = 'data/preprocessed/'
 
-    # find other mni templates at:
+    # find mni templates at:
     # http://www.bic.mni.mcgill.ca/ServicesAtlases/ICBM152NLin2009
     template_brain = os.path.join('../../data/',
                                   'mne_template',
@@ -356,12 +379,13 @@ if __name__ == "__main__":
     next_id, df_info = init_base(results_dir, column_names=column_names,
                                  file_name=csv_file)
 
+    # TODO: add joblib or multiprocessing
     for idx, path_raw in enumerate(path_list):
         print(f'{idx+1}/{n_dirs}, subject {next_id}, working on {path_raw}')
         path_results = os.path.join(results_dir, f'subject_{next_id}')
         path_figs = os.path.join(path_results, 'figs')
 
-        # create output path (TODO: for now if sth goes wrong this path remains
+        # create output path
         os.mkdir(path_results)
         os.mkdir(path_figs)
 
@@ -369,6 +393,7 @@ if __name__ == "__main__":
         next_subj = init_dict(column_names, RawPath=path_raw,
                               ProcessedPath=path_results, NewID=next_id)
 
+        # 1. combine lesions
         # check if multiple lesion files are saved
         # combines them and sets to 0 or 1
         lesion_img = combine_lesions(path_raw, lesion_str=data['lesion_str'])
@@ -376,7 +401,7 @@ if __name__ == "__main__":
         next_subj['RawSize_x'], next_subj['RawSize_y'], \
             next_subj['RawSize_z'] = lesion_img.shape
 
-        # remove the skull (from t1 and mask)
+        # 2. remove the skull (from t1 and mask)
         print('stripping skull')
         file_in = find_file(path=path_raw,
                             include_str=data['t1_inc_str'],
@@ -385,22 +410,17 @@ if __name__ == "__main__":
         t1_file = os.path.join(path_raw, file_in[0])
         t1_no_skull_file = os.path.join(path_results, 't1_no_skull.nii.gz')
         mask_no_skull_file = os.path.join(path_results, 'mask_no_skull.nii.gz')
-        # import pdb; pdb.set_trace()
-        # correct_bias(t1_file, 'temp.nii.gz')
 
         no_skull_t1_img, mask_img = strip_skull_mask(
             t1_file, t1_no_skull_file, mask_no_skull_file)
         no_skull_lesion_img = apply_mask_to_image(mask_img, lesion_img)
 
-        # save files, plot images (?)
         no_skull_lesion_file = os.path.join(path_results,
                                             'no_skull_lesion.nii.gz')
-        # no_skull_t1_file = os.path.join(path_results, 'no_skull_t1.nii.gz ')
         no_skull_lesion_img.to_filename(no_skull_lesion_file)
-
         assert no_skull_lesion_img.shape == no_skull_t1_img.shape
 
-        # align the image
+        # 3. align the image, normalize to mni space
         print('normalizing to mni space')
         no_skull_norm_t1_file = os.path.join(
             path_results, 'no_skull_norm_t1.nii.gz'
@@ -415,61 +435,34 @@ if __name__ == "__main__":
         normalize_to_transform(no_skull_lesion_file, no_skull_norm_lesion_file,
                                template_brain, transform_matrix_file)
 
-        print('plot template')
-        plotting.plot_stat_map(template_brain,
-                               title='template', display_mode='ortho', dim=-1,
-                               draw_cross=False, annotate=False, bg_img=None,
-                               cmap='Greys_r')
-        plt.savefig(os.path.join(path_figs, '0_template' + ext_fig))
-        print('plotting original image')
-        plotting.plot_stat_map(t1_file,
-                               title='original', display_mode='ortho', dim=-1,
-                               draw_cross=False, annotate=False, bg_img=None,
-                               cmap='Greys_r')
-        plt.savefig(os.path.join(path_figs, '1_original_image' + ext_fig))
+        # TODO: shall we also correct_bias? or any other steps? resampling?
 
-        print('plotting mask')
-        plotting.plot_stat_map(mask_no_skull_file,
-                               title='mask', display_mode='ortho', dim=-1,
-                               draw_cross=False, annotate=False, bg_img=None,
-                               cmap='autumn_r')
-        plt.savefig(os.path.join(path_figs, '2_mask_no_skull' + ext_fig))
+        # 4. Plot the results
+        print('save figurs')
+        plot_t1(template_brain, title='template',
+                path_figs=path_figs, name='0_template' + ext_fig)
+        plot_t1(t1_file, title='original',
+                path_figs=path_figs, name='1_original_t1' + ext_fig)
+        plot_mask(mask_no_skull_file, title='mask',
+                  path_figs=path_figs, name='2_mask_no_skull' + ext_fig)
+        plot_mask(t1_no_skull_file, title='original, no skull',
+                  path_figs=path_figs, name='3_original_no_skull' + ext_fig)
+        plot_mask(lesion_img, title='lesion',
+                  path_figs=path_figs, name='4_lesion' + ext_fig)
+        plot_mask(no_skull_lesion_img, title='lesion, mask',
+                  path_figs=path_figs, name='5_mask_lesion_no_skull' + ext_fig)
+        plot_mask(no_skull_norm_t1_file,  title='t1, no skull, norm',
+                  path_figs=path_figs, name='6_t1_no_skull_norm' + ext_fig))
+        plot_mask(no_skull_norm_lesion_file,  title = 'lesion, no skull, norm',
+                  path_figs=path_figs,
+                  name='7_lesion_no_skull_norm' + ext_fig))
+        plot_overlay(lesion_img,  title='before', bg_img = t1_file,
+                     path_figs = path_figs, name = '8_before_t1_lesion' + ext_fig))
+        plot_overlay(no_skull_norm_lesion_file,  title='after',
+                     bg_img = no_skull_norm_t1_file,
+                     path_fig s= path_figs, name = '9_after_t1_lesion' + ext_fig))
+        plot_overlay
 
-        print('plotting t1, no skull')
-        plotting.plot_stat_map(t1_no_skull_file,
-                               title='original, no skull',
-                               display_mode='ortho', dim=-1, draw_cross=False,
-                               annotate=False, bg_img=None,
-                               cmap='Greys_r')
-        plt.savefig(os.path.join(path_figs, '3_original_no_skull' + ext_fig))
-
-        print('plotting original and maskedlesion')
-        plotting.plot_stat_map(lesion_img,
-                               title='lesion', display_mode='ortho', dim=-1,
-                               draw_cross=False, annotate=False, bg_img=None,
-                               cmap='autumn_r')
-        plt.savefig(os.path.join(path_figs, '4_lesion' + ext_fig))
-        plotting.plot_stat_map(no_skull_lesion_img,
-                               title='lesion, mask', display_mode='ortho',
-                               dim=-1, draw_cross=False, annotate=False,
-                               bg_img=None,
-                               cmap='autumn_r')
-        plt.savefig(os.path.join(path_figs, '5_mask_lesion_no_skull' + ext_fig))
-
-        print('plotting normalized images')
-        plotting.plot_stat_map(no_skull_norm_t1_file,
-                               title='t1, no skull, norm',
-                               display_mode='ortho', dim=-1,
-                               draw_cross=False, annotate=False, bg_img=None,
-                               cmap='Greys_r')
-        plt.savefig(os.path.join(path_figs, '6_t1_no_skull_norm' + ext_fig))
-
-        plotting.plot_stat_map(no_skull_norm_lesion_file,
-                               title='lesion, no skull, norm',
-                               display_mode='ortho', dim=-1,
-                               draw_cross=False, annotate=False, bg_img=None,
-                               cmap='autumn_r')
-        plt.savefig(os.path.join(path_figs, '7_lesion_no_skull_norm' + ext_fig))
 
         plotting.plot_roi(lesion_img, bg_img=t1_file, title="before",
                           draw_cross=False, cmap='autumn')
@@ -493,55 +486,4 @@ if __name__ == "__main__":
         df.to_csv(os.path.join(results_dir, csv_file), mode='a', header=False)
         next_id += 1
 
-        # do we want to resample image?
-        # resampled_stat_img = resample_to_img(file_in, template)
-        # do we need to retreshold to make it binary mask again?
-        # resampled_mask = resample_to_img(mask, template) # clip = bool (for mask)
 
-
-        # add the new image files to the path assigning the number to it
-        # add the new image files to the .csv files (old path, new path, old
-        # patient name, new patient name, lesion size before preprocessing,
-        # add the picture of the transformation
-        # add the parameter to generate from the beginning or add to already
-        # existing
-        # try to speed up the process
-        # lesion size after preprocessing, image size)
-        # print('\n')
-        # if not err:
-        #    path_list.remove(path)
-        #    continue
-
-    # TODO: correct saving healthy data
-    # TODO: look at all the data, all the scans if they look alright
-    # TODO: for now no normalization, rescale is done and the bias is not
-    # corrected, do we want it here?
-    data_dir = '../../data/ATLAS_R1.1/'
-    # data_dir_new = '../../data/BIDS_lesions_zip/'
-    # healthy_data_dir = '../../data/healthy'
-
-    output_data_dir = 'data/preprocessed/'
-
-    convert_data_old(stroke_folder=data_dir, out_folder=output_data_dir)
-    # convert_data_new(stroke_folder=data_dir_new, out_folder=output_data_dir)
-
-    # make essential preprocessing steps:
-    # 1. if eough info and if needed: magnetic field inhomogeneity correction
-    # using FSL topup command
-    # 2. align to a standard space like MNI: (scans and lesions)
-    # 3. remove the skull
-
-
-    # TODO:
-    # add option if no lesion: healthy patient. create empty mask
-    #
-    # more?
-    # - shall we be correcting bias?
-    # - shall we be normalizing images?
-    #
-    # add notes:
-    # Note1: there might be more than one mask stored for one patients. Those
-    # masks will be collapsed into one
-    # Note2: some patients have scans at multiple times. Those scans will be
-    # considered as separate patient
-    # the output image masks will always consist only of [0, 1]s
