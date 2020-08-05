@@ -90,10 +90,22 @@ def strip_skull_mask(t1_file_in, t1_file_out, mask_file_out):
 
 
 def combine_lesions(path, lesion_str='Lesion'):
-    # path: path to the directory with all the scans
-    # out_file: name of the combined lesion file saved in the path
-    # lesion_str: string which is included in the name of all the lesions but
-    # not any other files
+    """it loads all the images from the files found in the given path which
+       include lesion_str in their name (assumed to be the lesion files), adds
+       them together, and sets all the values different from 0 to 1.
+    ----------
+    path: path to the directory
+        path where the lesion files are stored
+    lesion_str: string
+        string which must be included in the name of the lesion file
+
+    Returns
+    -------
+    t_img: image (binary) or 0
+        returns 0 if there were no matching files found or the nilearn image as
+        the combined lesion file
+    """
+
     n_lesions = 0
     print('combining lesions and setting them to 0s and 1s')
     for file_name in os.listdir(path):
@@ -110,36 +122,44 @@ def combine_lesions(path, lesion_str='Lesion'):
         lesion[lesion > 0] = 1
         masked = new_img_like(lesion_img, lesion,
                               affine=None, copy_header=False)
-        # masked.to_filename(os.path.join(path, out_file))
         return masked
     else:
-        # there are no lesions found. This path should be removed
+        # there are no lesions found
         warnings.warn('there are no lesion files with name including '
-                      f'{lesion_str} found in the {path}. This path will be '
-                      'removed from further analysis')
+                      f'{lesion_str} found in the {path}.')
         return 0
 
 
-def strip_skull(file_in, file_out):
-    ''' file_in and file_out must be of '.nii.gz' format. Need to have fsl
-    installed to run'''
-    skullstrip = BET()
-    skullstrip.inputs.in_file = file_in
-    skullstrip.inputs.out_file = file_out
-    skullstrip.run()
+def find_file(path, include_str='t1', exclude_str='lesion'):
+    """finds all the files in the given path which include include_str in their
+       name and do not include exclude_str
+    ----------
+    path: path to the directory
+        path where the files are stored
+    include_str: string
+        string which must be included in the name of the file
+    exclude_str: strin
+       string which may not be included in the name of the file
 
-
-def find_file(path, include='t1', exclude='lesion'):
+    Returns
+    -------
+    files: list
+        list of filenames matching the given criteria
+    """
     files = os.listdir(path)
-    if include is not None:
-        files = [n_file for n_file in files if (include in n_file)]
-    if exclude is not None:
-        files = [n_file for n_file in files if (exclude not in n_file)]
+    if include_str is not None:
+        files = [n_file for n_file in files if (include_str in n_file)]
+    if exclude_str is not None:
+        files = [n_file for n_file in files if (exclude_str not in n_file)]
     return files
 
 
 def clean_all(dir_to_clean):
-    # removes all the files and directories from the given path
+    """removes all the files and directories from the given path
+    ----------
+    path: dir_to_clean
+        path to directory to be cleaned out
+    """
 
     if os.path.exists(dir_to_clean):
         shutil.rmtree(dir_to_clean)
@@ -147,15 +167,31 @@ def clean_all(dir_to_clean):
     print(f'cleaned all from {dir_to_clean}')
 
 
-def init_base(base_dir, file_name='subject_info.csv'):
-    # initiates filename .csv file if it does not already exists
-    # returns next subject ID to be used
-    file_path = os.path.join(base_dir, file_name)
+def init_base(path, column_names, file_name='subject_info.csv'):
+    """initites the .csv file with the correct column names if it does not
+       already exist. Checks for the latest subject id and returns the next
+       subject id which should be used
+    ----------
+    path: path to the directory
+        path to the directory where the .csv file should be stored
+    column_names: list of strings
+        names of the columns which will be set in the top of the file if it
+        does not already exist
+    file_name: string
+        name of the .csv file, ending on .csv. Eg. subjects.csv
+
+
+    Returns
+    -------
+    subj_id: int
+        next subject id which should be used
+    dfObj: pandas dataframe
+        the content of the csv file
+    """
+
+    file_path = os.path.join(path, file_name)
     if not os.path.exists(file_path):
-        dfObj = pd.DataFrame(columns=['RawPath', 'ProcessedPath', 'NewID',
-                                      'RawSize_x', 'RawSize_y', 'RawSize_z',
-                                      'NewSize_x', 'NewSize_y', 'NewSize_z',
-                                      'RawLesionSize', 'NewLesionSize'])
+        dfObj = pd.DataFrame(columns=column_names)
         dfObj.to_csv(file_path)
         return 1, dfObj
     else:
@@ -163,27 +199,44 @@ def init_base(base_dir, file_name='subject_info.csv'):
         if len(dfObj) == 0:
             return 1, dfObj
         else:
-            last_used_id = np.max(dfObj['NewID'])
-            return last_used_id + 1, dfObj
+            subj_id = np.max(dfObj['NewID']) + 1
+            return subj_id, dfObj
 
 
-def init_next_subj(**kwargs):
-    # initiates new dictionary with the values to save:
-    next_subj = dict.fromkeys(['RawPath', 'ProcessedPath', 'NewID',
-                               'RawSize_x', 'RawSize_y', 'RawSize_z',
-                               'NewSize_x', 'NewSize_y', 'NewSize_z',
-                               'RawLesionSize', 'NewLesionSize'], None)
+def init_dict(key_names, **kwargs):
+    """initiates new dictionary with the keys set to key_names, values either
+       None, or specified in kwargs
+    ----------
+    key_names: path to the directory
+        path to the directory where the .csv file should be stored
+    **kwargs: any
+        values will be set in the dictionary. Keys should match keys from the
+        key_names
+
+    Returns
+    -------
+    dict: dictionary
+        dictionary with values set to either None or as specified by kwargs
+    """
+
+    next_subj = dict.fromkeys(column_names, None)
     for key, value in kwargs.items():
         next_subj[key] = value
     return next_subj
 
 
-def normalize_to_mni(t1_in, t1_out, lesion_in, lesion_out,
-                     template_out, matrix_out):
-
-    # transforms the t1_in to the same space as template_out, saves the
-    # transformed image under t1_out and the transformation matrix under
-    # matrix_out
+def normalize_to_mni(t1_in, t1_out, template, matrix_out):
+    """transforms the t1 to the same space as template.
+    ----------
+    t1_in: path to the nifti file
+       path to the file to be normalized
+    t1_out: path
+       where the transformed t1 image should be saved
+    template: path
+       to the template brain image
+    matrix_out: path
+       path where the matrix representing the transformation should be saved
+    """
     subprocess.run([
             "flirt",
             "-in", t1_in,
@@ -191,20 +244,36 @@ def normalize_to_mni(t1_in, t1_out, lesion_in, lesion_out,
             "-ref", template_out,
             "-omat", matrix_out])
 
+
+def normalize_to_transform(t1_in, t1_out, template_out, matrix_in):
+    """normalizes the T1 image to the given tranformation.
+    ----------
+    t1_in: path to the nifti file
+       path to the file to be normalized
+    t1_out: path
+       where the transformed t1 image should be saved
+    matrix_in: path
+       path to the matrix used for transformation
+
+    Returns
+    -------
+    dict: dictionary
+        dictionary with values set to either None or as specified by kwargs
+    """
     # takes the saved matrix_out and uses it to transform lesion_in and saves
     # the tranformed lesion_in under lesion_out
     subprocess.run([
-            "flirt",
-            "-in", lesion_in,
-            "-out", lesion_out,
-            "-applyxfm", "-init", matrix_out,
-            "-ref", template_out])
+                    "flirt",
+                    "-in", t1_in,
+                    "-out", t1_out,
+                    "-applyxfm", "-init", matrix_in,
+                    "-ref", template_out])
 
     # converts mask to binary. The higher threshold the smaller the mask
     subprocess.run([
-        "fslmaths", lesion_out,
-        "-thr", "0.5",
-        "-bin", lesion_out])
+                    "fslmaths", t1_out,
+                    "-thr", "0.5",
+                    "-bin", t1_out])
 
 
 if __name__ == "__main__":
@@ -213,7 +282,10 @@ if __name__ == "__main__":
     #   remove the skull (from t1 and mask)
     #   move all the images (t1 and masks) to mni space
     #   noramalize images (same average color) ??
-
+    column_names = ['RawPath', 'ProcessedPath', 'NewID',
+                                      'RawSize_x', 'RawSize_y', 'RawSize_z',
+                                      'NewSize_x', 'NewSize_y', 'NewSize_z',
+                                      'RawLesionSize', 'NewLesionSize']
     ### first data set
     dataset = {
         "raw_dir": '../../data/ATLAS_R1.1/',
@@ -249,7 +321,8 @@ if __name__ == "__main__":
     if rerun_all:
         clean_all(results_dir)
     csv_file = 'subject_info.csv'
-    next_id, df_info = init_base(results_dir, file_name=csv_file)
+    next_id, df_info = init_base(results_dir, column_names=column_names,
+                                 file_name=csv_file)
 
     for idx, path_raw in enumerate(path_list):
         print(f'{idx+1}/{n_dirs}, subject {next_id}, working on {path_raw}')
@@ -261,9 +334,8 @@ if __name__ == "__main__":
         os.mkdir(path_figs)
 
         # initiates info dict for the new subject
-        next_subj = init_next_subj(RawPath=path_raw,
-                                   ProcessedPath=path_results,
-                                   NewID=next_id)
+        next_subj = init_dict(column_names, RawPath=path_raw,
+                              ProcessedPath=path_results, NewID=next_id)
 
         # check if multiple lesion files are saved
         # combines them and sets to 0 or 1
@@ -275,8 +347,8 @@ if __name__ == "__main__":
         # remove the skull (from t1 and mask)
         print('stripping skull')
         file_in = find_file(path=path_raw,
-                            include=data['t1_inc_str'],
-                            exclude=data['t1_exc_str'])
+                            include_str=data['t1_inc_str'],
+                            exclude_str=data['t1_exc_str'])
         assert len(file_in) == 1  # only a single T1 file should be found
         t1_file = os.path.join(path_raw, file_in[0])
         t1_no_skull_file = os.path.join(path_results, 't1_no_skull.nii.gz')
@@ -305,9 +377,11 @@ if __name__ == "__main__":
             path_results, 'no_skull_norm_lesion.nii.gz')
 
         transform_matrix_file = os.path.join(path_results, 'matrix.mat')
-        normalize_to_mni(t1_no_skull_file, no_skull_norm_t1_file,
-                         no_skull_lesion_file, no_skull_norm_lesion_file,
-                         template_out, transform_matrix_file)  # flirt from fsl
+
+        normalize_to_mni(t1_no_skull_file, no_skull_norm_t1_file, template_out,
+                         transform_matrix_file)  # uses flirt from fsl
+        normalize_to_transform(no_skull_lesion_file, no_skull_norm_lesion_file,
+                         template_out, transform_matrix_file)
 
         print('plot template')
         plotting.plot_stat_map(template_out,
