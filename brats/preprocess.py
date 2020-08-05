@@ -283,10 +283,10 @@ if __name__ == "__main__":
     #   move all the images (t1 and masks) to mni space
     #   noramalize images (same average color) ??
     column_names = ['RawPath', 'ProcessedPath', 'NewID',
-                                      'RawSize_x', 'RawSize_y', 'RawSize_z',
-                                      'NewSize_x', 'NewSize_y', 'NewSize_z',
-                                      'RawLesionSize', 'NewLesionSize']
-    ### first data set
+                    'RawSize_x', 'RawSize_y', 'RawSize_z',
+                    'NewSize_x', 'NewSize_y', 'NewSize_z',
+                    'RawLesionSize', 'NewLesionSize']
+    # first data set
     dataset = {
         "raw_dir": '../../data/ATLAS_R1.1/',
         "lesion_str": 'Lesion',
@@ -381,54 +381,62 @@ if __name__ == "__main__":
         normalize_to_mni(t1_no_skull_file, no_skull_norm_t1_file, template_out,
                          transform_matrix_file)  # uses flirt from fsl
         normalize_to_transform(no_skull_lesion_file, no_skull_norm_lesion_file,
-                         template_out, transform_matrix_file)
+                               template_out, transform_matrix_file)
 
         print('plot template')
         plotting.plot_stat_map(template_out,
                                title='template', display_mode='ortho', dim=-1,
-                               draw_cross=False, annotate=False, bg_img=None)
+                               draw_cross=False, annotate=False, bg_img=None,
+                               cmap='Greys_r')
         plt.savefig(os.path.join(path_figs, '0_template' + ext))
         print('plotting original image')
         plotting.plot_stat_map(t1_file,
                                title='original', display_mode='ortho', dim=-1,
-                               draw_cross=False, annotate=False, bg_img=None)
+                               draw_cross=False, annotate=False, bg_img=None,
+                               cmap='Greys_r')
         plt.savefig(os.path.join(path_figs, '1_original_image' + ext))
 
         print('plotting mask')
         plotting.plot_stat_map(mask_no_skull_file,
                                title='mask', display_mode='ortho', dim=-1,
-                               draw_cross=False, annotate=False, bg_img=None)
+                               draw_cross=False, annotate=False, bg_img=None,
+                               cmap='autumn_r')
         plt.savefig(os.path.join(path_figs, '2_mask_no_skull' + ext))
 
         print('plotting t1, no skull')
         plotting.plot_stat_map(t1_no_skull_file,
                                title='original, no skull',
                                display_mode='ortho', dim=-1, draw_cross=False,
-                               annotate=False, bg_img=None)
+                               annotate=False, bg_img=None,
+                               cmap='Greys_r')
         plt.savefig(os.path.join(path_figs, '3_original_no_skull' + ext))
 
         print('plotting original and maskedlesion')
         plotting.plot_stat_map(lesion_img,
                                title='lesion', display_mode='ortho', dim=-1,
-                               draw_cross=False, annotate=False, bg_img=None)
+                               draw_cross=False, annotate=False, bg_img=None,
+                               cmap='autumn_r')
         plt.savefig(os.path.join(path_figs, '4_lesion' + ext))
         plotting.plot_stat_map(no_skull_lesion_img,
                                title='lesion, mask', display_mode='ortho',
                                dim=-1, draw_cross=False, annotate=False,
-                               bg_img=None)
+                               bg_img=None,
+                               cmap='autumn_r')
         plt.savefig(os.path.join(path_figs, '5_mask_lesion_no_skull' + ext))
 
         print('plotting normalized images')
         plotting.plot_stat_map(no_skull_norm_t1_file,
                                title='t1, no skull, norm',
                                display_mode='ortho', dim=-1,
-                               draw_cross=False, annotate=False, bg_img=None)
+                               draw_cross=False, annotate=False, bg_img=None,
+                               cmap='Greys_r')
         plt.savefig(os.path.join(path_figs, '6_t1_no_skull_norm' + ext))
 
         plotting.plot_stat_map(no_skull_norm_lesion_file,
                                title='lesion, no skull, norm',
                                display_mode='ortho', dim=-1,
-                               draw_cross=False, annotate=False, bg_img=None)
+                               draw_cross=False, annotate=False, bg_img=None,
+                               cmap='autumn_r')
         plt.savefig(os.path.join(path_figs, '7_lesion_no_skull_norm' + ext))
 
         plotting.plot_roi(lesion_img, bg_img=t1_file, title="before",
@@ -452,6 +460,7 @@ if __name__ == "__main__":
         df = pd.DataFrame(next_subj, index=[next_id])
         df.to_csv(os.path.join(results_dir, csv_file), mode='a', header=False)
         next_id += 1
+
         # do we want to resample image?
         # resampled_stat_img = resample_to_img(file_in, template)
         # do we need to retreshold to make it binary mask again?
