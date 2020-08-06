@@ -355,7 +355,7 @@ if __name__ == "__main__":
     # rerun_all: if set to True, all the preprocessed data saved
     # so far will be removed
     # TODO: test for rerun_all = False
-    rerun_all = True  # careful !!
+    rerun_all = False  # careful !!
     ext_fig = '.png'
     csv_file = 'subject_info.csv'
 
@@ -384,6 +384,9 @@ if __name__ == "__main__":
 
     next_id, df_info = init_base(results_dir, column_names=column_names,
                                  file_name=csv_file)
+    # remove all the paths from the path_list which are already stored in the
+    raw_paths_stored = np.array(df_info['RawPath'])
+    path_list = [path for path in path_list if path not in raw_paths_stored]
 
     # TODO: add joblib or multiprocessing
     for idx, path_raw in enumerate(path_list):
@@ -391,7 +394,9 @@ if __name__ == "__main__":
         path_results = os.path.join(results_dir, f'subject_{next_id}')
         path_figs = os.path.join(path_results, 'figs')
 
-        # create output path
+        # create output path. if it already exists. remove it and create clean
+        if os.path.exists(path_results):
+            shutil.rmtree(path_results)
         os.mkdir(path_results)
         os.mkdir(path_figs)
 
