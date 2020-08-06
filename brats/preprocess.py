@@ -328,6 +328,35 @@ def read_dataset(name):
     return None
 
 
+def bias_field_correction(t1_in):
+    """corrects field bias using fast method from fsl.
+       It will save multiple nifti files in the directory (as described by FAST
+       https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST#Fast) where t1_in is
+       stored, however only the path to the biased corrected image will be
+       returned
+    ----------
+    t1_in: path to the nifti file
+       path to the file to be biased corrected
+    Returns
+    -------
+    out_file: path to the nifti file
+        path to the file biased corrected
+    """
+    basename = 'bias'
+    out_dir = os.path.dirname(t1_in)
+    basename = os.path.join(out_dir, basename)
+
+    subprocess.run([
+            "fast",
+            "-t", "1",  # is T1
+            "-o", basename,  # basename for outputs
+            "-B",  # output restored image (bias-corrected image)
+            t1_in])  # nifti image to bias correct
+
+    out = basename + '_restore.nii.gz'
+    return out
+
+
 def plot_t1(path_t1, title, fig_dir, fig_file):
     plotting.plot_stat_map(path_t1, title=title,
                            display_mode='ortho', dim=-1,
@@ -431,6 +460,9 @@ if __name__ == "__main__":
         no_skull_lesion_img.to_filename(no_skull_lesion_file)
         assert no_skull_lesion_img.shape == no_skull_t1_img.shape
 
+        print('correcting bias. this might take a while')
+        t1_no_skull_file_bias = bias_field_correction(t1_no_skull_file)
+
         # 3. align the image, normalize to mni space
         print('normalizing to mni space')
         no_skull_norm_t1_file = os.path.join(
@@ -441,7 +473,7 @@ if __name__ == "__main__":
 
         transform_matrix_file = os.path.join(path_results, 'matrix.mat')
 
-        normalize_to_mni(t1_no_skull_file, no_skull_norm_t1_file,
+        normalize_to_mni(t1_no_skull_file_bias, no_skull_norm_t1_file,
                          template_brain, transform_matrix_file)
         normalize_to_transform(no_skull_lesion_file, no_skull_norm_lesion_file,
                                template_brain, transform_matrix_file)
@@ -458,6 +490,9 @@ if __name__ == "__main__":
                   fig_dir=path_figs, fig_file='2_mask_no_skull' + ext_fig)
         plot_t1(t1_no_skull_file, title='original, no skull',
                 fig_dir=path_figs, fig_file='3_original_no_skull' + ext_fig)
+        plot_t1(t1_no_skull_file_bias, title='original, no skull',
+                fig_dir=path_figs,
+                fig_file='3_5_original_no_skull_bias' + ext_fig)
         plot_mask(lesion_img, title='lesion',
                   fig_dir=path_figs, fig_file='4_lesion' + ext_fig)
         plot_mask(no_skull_lesion_img, title='lesion, mask',
