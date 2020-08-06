@@ -333,7 +333,7 @@ def plot_t1(path_t1, title, fig_dir, fig_file):
                            display_mode='ortho', dim=-1,
                            draw_cross=False, annotate=False, bg_img=None,
                            cmap='Greys_r')
-    plt.savefig(os.path.join(fig_dir,fig_file))
+    plt.savefig(os.path.join(fig_dir, fig_file))
 
 
 def plot_mask(path_mask, title, fig_dir, fig_file):
@@ -341,7 +341,13 @@ def plot_mask(path_mask, title, fig_dir, fig_file):
                            display_mode='ortho', dim=-1,
                            draw_cross=False, annotate=False, bg_img=None,
                            cmap='autumn_r')
-    plt.savefig(os.path.join(fig_dir,fig_file))
+    plt.savefig(os.path.join(fig_dir, fig_file))
+
+
+def plot_overlay(path_mask, path_bg, title, fig_dir, fig_file):
+    plotting.plot_roi(path_mask, bg_img=path_bg, title=title,
+                      draw_cross=False, cmap='autumn')
+    plt.savefig(os.path.join(fig_dir, fig_file))
 
 
 if __name__ == "__main__":
@@ -438,42 +444,35 @@ if __name__ == "__main__":
         # TODO: shall we also correct_bias? or any other steps? resampling?
 
         # 4. Plot the results
-        print('save figurs')
+        print('plotting and saving figs')
         plot_t1(template_brain, title='template',
-                path_figs=path_figs, name='0_template' + ext_fig)
+                fig_dir=path_figs, fig_file='0_template' + ext_fig)
         plot_t1(t1_file, title='original',
-                path_figs=path_figs, name='1_original_t1' + ext_fig)
+                fig_dir=path_figs, fig_file='1_original_t1' + ext_fig)
         plot_mask(mask_no_skull_file, title='mask',
-                  path_figs=path_figs, name='2_mask_no_skull' + ext_fig)
-        plot_mask(t1_no_skull_file, title='original, no skull',
-                  path_figs=path_figs, name='3_original_no_skull' + ext_fig)
+                  fig_dir=path_figs, fig_file='2_mask_no_skull' + ext_fig)
+        plot_t1(t1_no_skull_file, title='original, no skull',
+                fig_dir=path_figs, fig_file='3_original_no_skull' + ext_fig)
         plot_mask(lesion_img, title='lesion',
-                  path_figs=path_figs, name='4_lesion' + ext_fig)
+                  fig_dir=path_figs, fig_file='4_lesion' + ext_fig)
         plot_mask(no_skull_lesion_img, title='lesion, mask',
-                  path_figs=path_figs, name='5_mask_lesion_no_skull' + ext_fig)
-        plot_mask(no_skull_norm_t1_file,  title='t1, no skull, norm',
-                  path_figs=path_figs, name='6_t1_no_skull_norm' + ext_fig))
-        plot_mask(no_skull_norm_lesion_file,  title = 'lesion, no skull, norm',
-                  path_figs=path_figs,
-                  name='7_lesion_no_skull_norm' + ext_fig))
-        plot_overlay(lesion_img,  title='before', bg_img = t1_file,
-                     path_figs = path_figs, name = '8_before_t1_lesion' + ext_fig))
-        plot_overlay(no_skull_norm_lesion_file,  title='after',
-                     bg_img = no_skull_norm_t1_file,
-                     path_fig s= path_figs, name = '9_after_t1_lesion' + ext_fig))
-        plot_overlay
-
-
-        plotting.plot_roi(lesion_img, bg_img=t1_file, title="before",
-                          draw_cross=False, cmap='autumn')
-        plt.savefig(os.path.join(path_figs, '8_before_t1_lesion' + ext_fig))
-
-        plotting.plot_roi(no_skull_norm_lesion_file,
-                          bg_img=no_skull_norm_t1_file, title="after",
-                          draw_cross=False, cmap='autumn')
-        plt.savefig(os.path.join(path_figs, '9_after_t1_lesion' + ext_fig))
+                  fig_dir=path_figs,
+                  fig_file='5_mask_lesion_no_skull' + ext_fig)
+        plot_t1(no_skull_norm_t1_file,  title='t1, no skull, norm',
+                fig_dir=path_figs, fig_file='6_t1_no_skull_norm' + ext_fig)
+        plot_mask(no_skull_norm_lesion_file,  title='lesion, no skull, norm',
+                  fig_dir=path_figs,
+                  fig_file='7_lesion_no_skull_norm' + ext_fig)
+        plot_overlay(lesion_img, path_bg=t1_file, title='before',
+                     fig_dir=path_figs,
+                     fig_file='8_before_t1_lesion' + ext_fig)
+        plot_overlay(no_skull_norm_lesion_file, path_bg=no_skull_norm_t1_file,
+                     title='after', fig_dir=path_figs,
+                     fig_file='9_after_t1_lesion' + ext_fig)
         plt.close('all')
 
+        # save the info in the .csv file
+        print(f'saving the info to the {csv_file}')
         no_skull_norm_lesion_img = load_img(no_skull_norm_lesion_file)
         no_skull_norm_lesion_data = no_skull_norm_lesion_img.get_fdata()
         next_subj['NewLesionSize'] = int(np.sum(no_skull_norm_lesion_data))
@@ -485,5 +484,3 @@ if __name__ == "__main__":
         df = pd.DataFrame(next_subj, index=[next_id])
         df.to_csv(os.path.join(results_dir, csv_file), mode='a', header=False)
         next_id += 1
-
-
