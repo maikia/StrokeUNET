@@ -259,12 +259,22 @@ def normalize_to_mni(t1_in, t1_out, template, matrix_out):
     matrix_out: path
        path where the matrix representing the transformation should be saved
     """
-    subprocess.run([
-            "flirt",
-            "-in", t1_in,
-            "-out", t1_out,
-            "-ref", template,
-            "-omat", matrix_out])
+
+    if not os.environ.get('DISPLAY'):
+        subprocess.run([
+                "nice", "-n", "10",
+                "flirt",
+                "-in", t1_in,
+                "-out", t1_out,
+                "-ref", template,
+                "-omat", matrix_out])
+    else:
+        subprocess.run([
+                "flirt",
+                "-in", t1_in,
+                "-out", t1_out,
+                "-ref", template,
+                "-omat", matrix_out])
 
 
 def normalize_to_transform(t1_in, t1_out, template, matrix_in):
@@ -284,7 +294,9 @@ def normalize_to_transform(t1_in, t1_out, template, matrix_in):
     """
     # takes the saved matrix_out and uses it to transform lesion_in and saves
     # the tranformed lesion_in under lesion_out
-    subprocess.run([
+    if not os.environ.get('DISPLAY'):
+        subprocess.run([
+                    "nice", "-n", "10",
                     "flirt",
                     "-in", t1_in,
                     "-out", t1_out,
@@ -292,7 +304,21 @@ def normalize_to_transform(t1_in, t1_out, template, matrix_in):
                     "-ref", template])
 
     # converts mask to binary. The higher threshold the smaller the mask
-    subprocess.run([
+        subprocess.run([
+                    "nice", "-n", "10",
+                    "fslmaths", t1_out,
+                    "-thr", "0.5",
+                    "-bin", t1_out])
+    else:
+        subprocess.run([
+                    "flirt",
+                    "-in", t1_in,
+                    "-out", t1_out,
+                    "-applyxfm", "-init", matrix_in,
+                    "-ref", template])
+
+        # converts mask to binary. The higher threshold the smaller the mask
+        subprocess.run([
                     "fslmaths", t1_out,
                     "-thr", "0.5",
                     "-bin", t1_out])
@@ -368,8 +394,16 @@ def bias_field_correction(t1_in):
     basename = 'bias'
     out_dir = os.path.dirname(t1_in)
     basename = os.path.join(out_dir, basename)
-
-    subprocess.run([
+    if not os.environ.get('DISPLAY'):
+        subprocess.run([
+                "nice", "-n", "10",
+                "fast",
+                "-t", "1",  # is T1
+                "-o", basename,  # basename for outputs
+                "-B",  # output restored image (bias-corrected image)
+                t1_in])  # nifti image to bias correct
+    else:
+        subprocess.run([
             "fast",
             "-t", "1",  # is T1
             "-o", basename,  # basename for outputs
