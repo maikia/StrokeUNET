@@ -108,7 +108,6 @@ def combine_lesions(path, lesion_str='Lesion'):
     """
 
     n_lesions = 0
-    print('combining lesions and setting them to 0s and 1s')
     for file_name in os.listdir(path):
         if lesion_str in file_name:
             # is lesion
@@ -165,7 +164,6 @@ def clean_all(dir_to_clean):
     if os.path.exists(dir_to_clean):
         shutil.rmtree(dir_to_clean)
     os.mkdir(dir_to_clean)
-    print(f'cleaned all from {dir_to_clean}')
 
 
 def init_base(path, column_names, file_name='subject_info.csv'):
@@ -405,11 +403,14 @@ if __name__ == "__main__":
     assert data is not None
 
     # find all the directories with the 'nii.gz' files
+    ext = '.nii.gz'
+    raw_dir = data['raw_dir']
     print(f'Wait. I am searching for "{ext}" files in {raw_dir}')
-    path_list = find_dirs(raw_dir=data['raw_dir'], ext='.nii.gz')
+    path_list = find_dirs(raw_dir=raw_dir, ext=ext)
     n_dirs = len(path_list)
 
     if rerun_all:
+        print(f'cleaning up {results_dir}')
         clean_all(results_dir)
 
     next_id, df_info = init_base(results_dir, column_names=column_names,
@@ -437,6 +438,7 @@ if __name__ == "__main__":
         # 1. combine lesions
         # check if multiple lesion files are saved
         # combines them and sets to 0 or 1
+        print('combining lesions and setting them to 0s and 1s')
         lesion_img = combine_lesions(path_raw, lesion_str=data['lesion_str'])
         next_subj['RawLesionSize'] = int(np.sum(lesion_img.get_fdata()))
         next_subj['RawSize_x'], next_subj['RawSize_y'], \
