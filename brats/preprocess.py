@@ -11,9 +11,18 @@ import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
 
+from joblib import Memory, Parallel, delayed
 from nilearn import plotting
 from nilearn.image import load_img, math_img, new_img_like
 from nipype.interfaces.fsl import BET
+
+if os.environ.get('DISPLAY'):
+    N_JOBS = 1
+else:
+    # running on the server
+    N_JOBS = -1
+
+mem = Memory('./')
 
 
 def find_dirs(raw_dir='data/', ext='.nii.gz'):
@@ -393,6 +402,117 @@ def plot_overlay(path_mask, path_bg, title, fig_dir, fig_file):
     plt.savefig(os.path.join(fig_dir, fig_file))
 
 
+def preprocess_image(next_id, path_raw, path_template):
+    print(f'subject {next_id}, working on {path_raw}')
+    path_results = os.path.join(results_dir, f'subject_{next_id}')
+    path_figs = os.path.join(path_results, 'figs')
+
+    # create output path. if it already exists. remove it and create clean
+    if os.path.exists(path_results):
+        shutil.rmtree(path_results)
+    os.mkdir(path_results)
+    os.mkdir(path_figs)
+
+    # initiates info dict for the new subject
+    next_subj = init_dict(column_names, RawPath=path_raw,
+                          ProcessedPath=path_results, NewID=next_id)
+
+    # 1. combine lesions
+    # check if multiple lesion files are saved
+    # combines them and sets to 0 or 1
+    print(f's{next_id}: combining lesions and setting them to 0s and 1s')
+    lesion_img = combine_lesions(path_raw, lesion_str=data['lesion_str'])
+    next_subj['RawLesionSize'] = int(np.sum(lesion_img.get_fdata()))
+    next_subj['RawSize_x'], next_subj['RawSize_y'], \
+        next_subj['RawSize_z'] = lesion_img.shape
+
+    # 2. remove the skull (from t1 and mask)
+    print(f's{next_id}: stripping skull')
+    file_in = find_file(path=path_raw,
+                        include_str=data['t1_inc_str'],
+                        exclude_str=data['t1_exc_str'])
+    assert len(file_in) == 1  # only a single T1 file should be found
+    t1_file = os.path.join(path_raw, file_in[0])
+    t1_no_skull_file = os.path.join(path_results, 't1_no_skull.nii.gz')
+    mask_no_skull_file = os.path.join(path_results, 'mask_no_skull.nii.gz')
+
+    no_skull_t1_img, mask_img = strip_skull_mask(
+        t1_file, t1_no_skull_file, mask_no_skull_file)
+    no_skull_lesion_img = apply_mask_to_image(mask_img, lesion_img)
+
+    no_skull_lesion_file = os.path.join(path_results,
+                                        'no_skull_lesion.nii.gz')
+    no_skull_lesion_img.to_filename(no_skull_lesion_file)
+    assert no_skull_lesion_img.shape == no_skull_t1_img.shape
+
+    # 3. correct bias
+    print(f's{next_id}: correcting bias. this might take a while')
+    t1_no_skull_file_bias = bias_field_correction(t1_no_skull_file)
+
+    # 4. align the image, normalize to mni space
+    print(f's{next_id}: normalizing to mni space')
+    no_skull_norm_t1_file = os.path.join(
+        path_results, 'no_skull_norm_t1.nii.gz'
+    )
+    no_skull_norm_lesion_file = os.path.join(
+        path_results, 'no_skull_norm_lesion.nii.gz')
+
+    transform_matrix_file = os.path.join(path_results, 'matrix.mat')
+
+    normalize_to_mni(t1_no_skull_file_bias, no_skull_norm_t1_file,
+                     template_brain_no_skull, transform_matrix_file)
+    normalize_to_transform(no_skull_lesion_file, no_skull_norm_lesion_file,
+                           path_template, transform_matrix_file)
+
+    # TODO: any other steps? resampling?
+
+    # 5. Plot the results
+    print(f's{next_id}: plotting and saving figs')
+    plot_t1(template_brain, title='template',
+            fig_dir=path_figs, fig_file='0_template' + ext_fig)
+    plot_t1(template_brain_no_skull, title='template, no skull',
+            fig_dir=path_figs, fig_file='0_1_template_no_skull' + ext_fig)
+    plot_t1(t1_file, title='original',
+            fig_dir=path_figs, fig_file='1_original_t1' + ext_fig)
+    plot_mask(mask_no_skull_file, title='mask',
+              fig_dir=path_figs, fig_file='2_mask_no_skull' + ext_fig)
+    plot_t1(t1_no_skull_file, title='original, no skull',
+            fig_dir=path_figs, fig_file='3_original_no_skull' + ext_fig)
+    plot_t1(t1_no_skull_file_bias, title='original, no skull',
+            fig_dir=path_figs,
+            fig_file='3_5_original_no_skull_bias' + ext_fig)
+    plot_mask(lesion_img, title='lesion',
+              fig_dir=path_figs, fig_file='4_lesion' + ext_fig)
+    plot_mask(no_skull_lesion_img, title='lesion, mask',
+              fig_dir=path_figs,
+              fig_file='5_mask_lesion_no_skull' + ext_fig)
+    plot_t1(no_skull_norm_t1_file,  title='t1, no skull, norm',
+            fig_dir=path_figs, fig_file='6_t1_no_skull_norm' + ext_fig)
+    plot_mask(no_skull_norm_lesion_file,  title='lesion, no skull, norm',
+              fig_dir=path_figs,
+              fig_file='7_lesion_no_skull_norm' + ext_fig)
+    plot_overlay(lesion_img, path_bg=t1_file, title='before',
+                 fig_dir=path_figs,
+                 fig_file='8_before_t1_lesion' + ext_fig)
+    plot_overlay(no_skull_norm_lesion_file, path_bg=no_skull_norm_t1_file,
+                 title='after', fig_dir=path_figs,
+                 fig_file='9_after_t1_lesion' + ext_fig)
+    plt.close('all')
+
+    # save the info in the .csv file
+    print(f'saving the info to the {csv_file}')
+    no_skull_norm_lesion_img = load_img(no_skull_norm_lesion_file)
+    no_skull_norm_lesion_data = no_skull_norm_lesion_img.get_fdata()
+    next_subj['NewLesionSize'] = int(np.sum(no_skull_norm_lesion_data))
+
+    no_skull_norm_t1_img = load_img(no_skull_norm_t1_file)
+    assert no_skull_norm_t1_img.shape == no_skull_norm_lesion_data.shape
+
+    next_subj['NewSize_x'], next_subj['NewSize_y'], \
+        next_subj['NewSize_z'] = no_skull_norm_lesion_data.shape
+    return next_subj
+
+
 if __name__ == "__main__":
     dataset_name = 'dataset_1'  # also dataset_2, TODO: dataset_healthy
     # rerun_all: if set to True, all the preprocessed data saved
@@ -442,114 +562,14 @@ if __name__ == "__main__":
     raw_paths_stored = np.array(df_info['RawPath'])
     path_list = [path for path in path_list if path not in raw_paths_stored]
 
-    # TODO: add joblib or multiprocessing
-    for idx, path_raw in enumerate(path_list):
-        print(f'{idx+1}/{n_dirs}, subject {next_id}, working on {path_raw}')
-        path_results = os.path.join(results_dir, f'subject_{next_id}')
-        path_figs = os.path.join(path_results, 'figs')
+    print(f'begining to analyze {n_dirs} patient directories')
+    dict_result = Parallel(n_jobs=N_JOBS)(
+        delayed(preprocess_image)(
+            next_id+idx, path_raw, template_brain_no_skull)
+        for idx, path_raw in enumerate(path_list[:2])
+    )
 
-        # create output path. if it already exists. remove it and create clean
-        if os.path.exists(path_results):
-            shutil.rmtree(path_results)
-        os.mkdir(path_results)
-        os.mkdir(path_figs)
-
-        # initiates info dict for the new subject
-        next_subj = init_dict(column_names, RawPath=path_raw,
-                              ProcessedPath=path_results, NewID=next_id)
-
-        # 1. combine lesions
-        # check if multiple lesion files are saved
-        # combines them and sets to 0 or 1
-        print(f's{next_id}: combining lesions and setting them to 0s and 1s')
-        lesion_img = combine_lesions(path_raw, lesion_str=data['lesion_str'])
-        next_subj['RawLesionSize'] = int(np.sum(lesion_img.get_fdata()))
-        next_subj['RawSize_x'], next_subj['RawSize_y'], \
-            next_subj['RawSize_z'] = lesion_img.shape
-
-        # 2. remove the skull (from t1 and mask)
-        print(f's{next_id}: stripping skull')
-        file_in = find_file(path=path_raw,
-                            include_str=data['t1_inc_str'],
-                            exclude_str=data['t1_exc_str'])
-        assert len(file_in) == 1  # only a single T1 file should be found
-        t1_file = os.path.join(path_raw, file_in[0])
-        t1_no_skull_file = os.path.join(path_results, 't1_no_skull.nii.gz')
-        mask_no_skull_file = os.path.join(path_results, 'mask_no_skull.nii.gz')
-
-        no_skull_t1_img, mask_img = strip_skull_mask(
-            t1_file, t1_no_skull_file, mask_no_skull_file)
-        no_skull_lesion_img = apply_mask_to_image(mask_img, lesion_img)
-
-        no_skull_lesion_file = os.path.join(path_results,
-                                            'no_skull_lesion.nii.gz')
-        no_skull_lesion_img.to_filename(no_skull_lesion_file)
-        assert no_skull_lesion_img.shape == no_skull_t1_img.shape
-
-        # 3. correct bias
-        print(f's{next_id}: correcting bias. this might take a while')
-        t1_no_skull_file_bias = bias_field_correction(t1_no_skull_file)
-
-        # 4. align the image, normalize to mni space
-        print(f's{next_id}: normalizing to mni space')
-        no_skull_norm_t1_file = os.path.join(
-            path_results, 'no_skull_norm_t1.nii.gz'
-        )
-        no_skull_norm_lesion_file = os.path.join(
-            path_results, 'no_skull_norm_lesion.nii.gz')
-
-        transform_matrix_file = os.path.join(path_results, 'matrix.mat')
-
-        normalize_to_mni(t1_no_skull_file_bias, no_skull_norm_t1_file,
-                         template_brain_no_skull, transform_matrix_file)
-        normalize_to_transform(no_skull_lesion_file, no_skull_norm_lesion_file,
-                               template_brain_no_skull, transform_matrix_file)
-
-        # TODO: any other steps? resampling?
-
-        # 5. Plot the results
-        print(f's{next_id}: plotting and saving figs')
-        plot_t1(template_brain, title='template',
-                fig_dir=path_figs, fig_file='0_template' + ext_fig)
-        plot_t1(template_brain_no_skull, title='template, no skull',
-                fig_dir=path_figs, fig_file='0_1_template_no_skull' + ext_fig)
-        plot_t1(t1_file, title='original',
-                fig_dir=path_figs, fig_file='1_original_t1' + ext_fig)
-        plot_mask(mask_no_skull_file, title='mask',
-                  fig_dir=path_figs, fig_file='2_mask_no_skull' + ext_fig)
-        plot_t1(t1_no_skull_file, title='original, no skull',
-                fig_dir=path_figs, fig_file='3_original_no_skull' + ext_fig)
-        plot_t1(t1_no_skull_file_bias, title='original, no skull',
-                fig_dir=path_figs,
-                fig_file='3_5_original_no_skull_bias' + ext_fig)
-        plot_mask(lesion_img, title='lesion',
-                  fig_dir=path_figs, fig_file='4_lesion' + ext_fig)
-        plot_mask(no_skull_lesion_img, title='lesion, mask',
-                  fig_dir=path_figs,
-                  fig_file='5_mask_lesion_no_skull' + ext_fig)
-        plot_t1(no_skull_norm_t1_file,  title='t1, no skull, norm',
-                fig_dir=path_figs, fig_file='6_t1_no_skull_norm' + ext_fig)
-        plot_mask(no_skull_norm_lesion_file,  title='lesion, no skull, norm',
-                  fig_dir=path_figs,
-                  fig_file='7_lesion_no_skull_norm' + ext_fig)
-        plot_overlay(lesion_img, path_bg=t1_file, title='before',
-                     fig_dir=path_figs,
-                     fig_file='8_before_t1_lesion' + ext_fig)
-        plot_overlay(no_skull_norm_lesion_file, path_bg=no_skull_norm_t1_file,
-                     title='after', fig_dir=path_figs,
-                     fig_file='9_after_t1_lesion' + ext_fig)
-        plt.close('all')
-
-        # save the info in the .csv file
-        print(f'saving the info to the {csv_file}')
-        no_skull_norm_lesion_img = load_img(no_skull_norm_lesion_file)
-        no_skull_norm_lesion_data = no_skull_norm_lesion_img.get_fdata()
-        next_subj['NewLesionSize'] = int(np.sum(no_skull_norm_lesion_data))
-
-        no_skull_norm_t1_img = load_img(no_skull_norm_t1_file)
-
-        next_subj['NewSize_x'], next_subj['NewSize_y'], \
-            next_subj['NewSize_z'] = no_skull_norm_lesion_data.shape
-        df = pd.DataFrame(next_subj, index=[next_id])
-        df.to_csv(os.path.join(results_dir, csv_file), mode='a', header=False)
-        next_id += 1
+    df = pd.DataFrame(dict_result,
+                      index=range(next_id, len(dict_result)+next_id))
+    df.to_csv(os.path.join(results_dir, csv_file), mode='a', header=False)
+    print(f'saved results from {len(dict_result)} patient directories')
