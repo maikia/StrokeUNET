@@ -566,7 +566,7 @@ if __name__ == "__main__":
     dict_result = Parallel(n_jobs=N_JOBS)(
         delayed(preprocess_image)(
             next_id+idx, path_raw, template_brain_no_skull)
-        for idx, path_raw in enumerate(path_list[:2])
+        for idx, path_raw in enumerate(path_list)
     )
 
     df = pd.DataFrame(dict_result,
