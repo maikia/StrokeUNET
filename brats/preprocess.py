@@ -410,9 +410,12 @@ if __name__ == "__main__":
 
     # find mni templates at:
     # http://www.bic.mni.mcgill.ca/ServicesAtlases/ICBM152NLin2009
+    # use mni_icbm152_t1_tal_nlin_asym_09c.nii.gz for lower resolution
+    # and smaller data size
+    template_file = 'mni_icbm152_t1_tal_nlin_asym_09b_hires.nii.gz'
     template_brain = os.path.join('../../data/',
                                   'mne_template',
-                                  'mni_icbm152_t1_tal_nlin_asym_09c.nii.gz')
+                                  template_file)
 
     # find all the directories with the 'nii.gz' files
     ext = '.nii.gz'
