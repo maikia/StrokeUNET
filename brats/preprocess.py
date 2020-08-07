@@ -59,16 +59,24 @@ def apply_mask_to_image(mask, img):
     return masked
 
 
-def strip_skull_mask(t1_file_in, t1_file_out, mask_file_out):
+def strip_skull_mask(t1_file_in, t1_file_out, mask_file_out, frac=0.3):
     """strips the skull from the T1 MRI image
     ----------
     t1_file_in: an existing file name
         path nifti file with the T1 MRI image with the skull
     t1_file_out: path to the file name
         path where the new image with skull stripped is to be saved
-    mask_file_out : path to the file name
+    mask_file_out: path to the file name
         path where the calculated mask used to strip the t1_file_in image is
         to be saved
+    frac: 'auto' or float
+        fractional intensity threshold, default is 'auto' (note: different than
+        in BET, where it is 0.5). If frac is 'auto', then the mean of the
+        t1_file_in is calculated. For mean < 20, frac is set to 0.5. If mean is
+        > 20 and < 25 then frac is set to 0.4. If mean is > 25 then frac is set
+        to 0.3.
+        TODO: the correctness of those settings should be tested on the
+        larger dataset
 
     Returns
     -------
@@ -77,9 +85,17 @@ def strip_skull_mask(t1_file_in, t1_file_out, mask_file_out):
     mask: nilearn image
         the calculated mask
     """
-    # fractional intensity threshold (frac), default is 0.5
+    if frac == 'auto':
+        data = load_img(t1_file_in).get_fdata()
+        md = np.mean(data)
+        if md < 20:
+            frac = 0.5
+        elif md < 25:
+            frac = 0.4
+        else:
+            frac = 0.5
     skullstrip = BET(in_file=t1_file_in, out_file=t1_file_out, mask=False,
-                     frac=0.3)
+                     frac=frac)
     skullstrip.run()
 
     # it sets all the values > 0 to 1 creating a mask
@@ -106,7 +122,6 @@ def combine_lesions(path, lesion_str='Lesion'):
         returns 0 if there were no matching files found or the nilearn image as
         the combined lesion file
     """
-
     n_lesions = 0
     for file_name in os.listdir(path):
         if lesion_str in file_name:
@@ -399,11 +414,10 @@ if __name__ == "__main__":
                                   'mne_template',
                                   'mni_icbm152_t1_tal_nlin_asym_09c.nii.gz')
 
-    data = read_dataset(dataset_name)
-    assert data is not None
-
     # find all the directories with the 'nii.gz' files
     ext = '.nii.gz'
+    data = read_dataset(dataset_name)
+    assert data is not None
     raw_dir = data['raw_dir']
     print(f'Wait. I am searching for "{ext}" files in {raw_dir}')
     path_list = find_dirs(raw_dir=raw_dir, ext=ext)
@@ -412,6 +426,12 @@ if __name__ == "__main__":
     if rerun_all:
         print(f'cleaning up {results_dir}')
         clean_all(results_dir)
+
+    # strip the skull from template brain
+    template_brain_no_skull = os.path.join(results_dir, 'template.nii.gz')
+    template_mask = os.path.join(results_dir, 'template_mask.nii.gz')
+    strip_skull_mask(template_brain, template_brain_no_skull, template_mask,
+                     frac=0.5)
 
     next_id, df_info = init_base(results_dir, column_names=column_names,
                                  file_name=csv_file)
@@ -438,14 +458,14 @@ if __name__ == "__main__":
         # 1. combine lesions
         # check if multiple lesion files are saved
         # combines them and sets to 0 or 1
-        print('combining lesions and setting them to 0s and 1s')
+        print(f's{next_id}: combining lesions and setting them to 0s and 1s')
         lesion_img = combine_lesions(path_raw, lesion_str=data['lesion_str'])
         next_subj['RawLesionSize'] = int(np.sum(lesion_img.get_fdata()))
         next_subj['RawSize_x'], next_subj['RawSize_y'], \
             next_subj['RawSize_z'] = lesion_img.shape
 
         # 2. remove the skull (from t1 and mask)
-        print('stripping skull')
+        print(f's{next_id}: stripping skull')
         file_in = find_file(path=path_raw,
                             include_str=data['t1_inc_str'],
                             exclude_str=data['t1_exc_str'])
@@ -463,11 +483,12 @@ if __name__ == "__main__":
         no_skull_lesion_img.to_filename(no_skull_lesion_file)
         assert no_skull_lesion_img.shape == no_skull_t1_img.shape
 
-        print('correcting bias. this might take a while')
+        # 3. correct bias
+        print(f's{next_id}: correcting bias. this might take a while')
         t1_no_skull_file_bias = bias_field_correction(t1_no_skull_file)
 
-        # 3. align the image, normalize to mni space
-        print('normalizing to mni space')
+        # 4. align the image, normalize to mni space
+        print(f's{next_id}: normalizing to mni space')
         no_skull_norm_t1_file = os.path.join(
             path_results, 'no_skull_norm_t1.nii.gz'
         )
@@ -477,16 +498,18 @@ if __name__ == "__main__":
         transform_matrix_file = os.path.join(path_results, 'matrix.mat')
 
         normalize_to_mni(t1_no_skull_file_bias, no_skull_norm_t1_file,
-                         template_brain, transform_matrix_file)
+                         template_brain_no_skull, transform_matrix_file)
         normalize_to_transform(no_skull_lesion_file, no_skull_norm_lesion_file,
-                               template_brain, transform_matrix_file)
+                               template_brain_no_skull, transform_matrix_file)
 
         # TODO: any other steps? resampling?
 
-        # 4. Plot the results
-        print('plotting and saving figs')
+        # 5. Plot the results
+        print(f's{next_id}: plotting and saving figs')
         plot_t1(template_brain, title='template',
                 fig_dir=path_figs, fig_file='0_template' + ext_fig)
+        plot_t1(template_brain_no_skull, title='template, no skull',
+                fig_dir=path_figs, fig_file='0_1_template_no_skull' + ext_fig)
         plot_t1(t1_file, title='original',
                 fig_dir=path_figs, fig_file='1_original_t1' + ext_fig)
         plot_mask(mask_no_skull_file, title='mask',
