@@ -28,7 +28,6 @@ def find_dirs(raw_dir='data/', ext='.nii.gz'):
         list of the directories which contain at least a single file with `ext`
         extension
     """
-    print(f'Wait. I am searching for "{ext}" files in {raw_dir}')
     path_list = []
     for dirname, dirnames, filenames in os.walk(raw_dir):
         # save directories with all filenames ending on `ext`
@@ -78,7 +77,9 @@ def strip_skull_mask(t1_file_in, t1_file_out, mask_file_out):
     mask: nilearn image
         the calculated mask
     """
-    skullstrip = BET(in_file=t1_file_in, out_file=t1_file_out, mask=False)
+    # fractional intensity threshold (frac), default is 0.5
+    skullstrip = BET(in_file=t1_file_in, out_file=t1_file_out, mask=False,
+                     frac=0.3)
     skullstrip.run()
 
     # it sets all the values > 0 to 1 creating a mask
@@ -383,8 +384,7 @@ if __name__ == "__main__":
     dataset_name = 'dataset_1'  # also dataset_2, TODO: dataset_healthy
     # rerun_all: if set to True, all the preprocessed data saved
     # so far will be removed
-    # TODO: test for rerun_all = False
-    rerun_all = False  # careful !!
+    rerun_all = True  # careful !!
     ext_fig = '.png'
     csv_file = 'subject_info.csv'
 
@@ -405,6 +405,7 @@ if __name__ == "__main__":
     assert data is not None
 
     # find all the directories with the 'nii.gz' files
+    print(f'Wait. I am searching for "{ext}" files in {raw_dir}')
     path_list = find_dirs(raw_dir=data['raw_dir'], ext='.nii.gz')
     n_dirs = len(path_list)
 
@@ -478,7 +479,7 @@ if __name__ == "__main__":
         normalize_to_transform(no_skull_lesion_file, no_skull_norm_lesion_file,
                                template_brain, transform_matrix_file)
 
-        # TODO: shall we also correct_bias? or any other steps? resampling?
+        # TODO: any other steps? resampling?
 
         # 4. Plot the results
         print('plotting and saving figs')
