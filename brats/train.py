@@ -1,12 +1,13 @@
-import os
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
 import glob
+import os
 
 from unet3d.data import write_data_to_file, open_data_file
 from unet3d.generator import get_training_and_validation_generators
 from unet3d.model import isensee2017_model
 from unet3d.training import load_old_model, train_model
+
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 
 config = dict()
