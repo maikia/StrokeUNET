@@ -20,7 +20,7 @@ if os.environ.get('DISPLAY'):
     N_JOBS = 1
 else:
     # running on the server
-    N_JOBS = -1
+    N_JOBS = 2
 
 mem = Memory('./')
 
@@ -418,7 +418,8 @@ def plot_t1(path_t1, title, fig_dir, fig_file):
     plotting.plot_stat_map(path_t1, title=title,
                            display_mode='ortho', dim=-1,
                            draw_cross=False, annotate=False, bg_img=None,
-                           cmap='Greys_r')
+                           cmap='Greys_r',
+                           cut_coords=(0, 0, 0))
     plt.savefig(os.path.join(fig_dir, fig_file))
 
 
@@ -426,13 +427,15 @@ def plot_mask(path_mask, title, fig_dir, fig_file):
     plotting.plot_stat_map(path_mask, title=title,
                            display_mode='ortho', dim=-1,
                            draw_cross=False, annotate=False, bg_img=None,
-                           cmap='autumn_r')
+                           cmap='autumn_r',
+                           cut_coords=[0, 0, 0)])
     plt.savefig(os.path.join(fig_dir, fig_file))
 
 
 def plot_overlay(path_mask, path_bg, title, fig_dir, fig_file):
     plotting.plot_roi(path_mask, bg_img=path_bg, title=title,
-                      draw_cross=False, cmap='autumn')
+                      draw_cross=False, cmap='autumn',
+                      cut_coords=[0, 0, 0])
     plt.savefig(os.path.join(fig_dir, fig_file))
 
 
@@ -502,6 +505,7 @@ def preprocess_image(next_id, path_raw, path_template):
 
     # 5. Plot the results
     print(f's{next_id}: plotting and saving figs')
+
     plot_t1(template_brain, title='template',
             fig_dir=path_figs, fig_file='0_template' + ext_fig)
     plot_t1(template_brain_no_skull, title='template, no skull',
@@ -551,7 +555,7 @@ if __name__ == "__main__":
     dataset_name = 'dataset_1'  # also dataset_2, TODO: dataset_healthy
     # rerun_all: if set to True, all the preprocessed data saved
     # so far will be removed
-    rerun_all = True  # careful !!
+    rerun_all = False  # careful !!
     ext_fig = '.png'
     csv_file = 'subject_info.csv'
 
