@@ -428,7 +428,7 @@ def plot_mask(path_mask, title, fig_dir, fig_file):
                            display_mode='ortho', dim=-1,
                            draw_cross=False, annotate=False, bg_img=None,
                            cmap='autumn_r',
-                           cut_coords=[0, 0, 0)])
+                           cut_coords=[0, 0, 0])
     plt.savefig(os.path.join(fig_dir, fig_file))
 
 
@@ -535,6 +535,7 @@ def preprocess_image(next_id, path_raw, path_template):
     plot_overlay(no_skull_norm_lesion_file, path_bg=no_skull_norm_t1_file,
                  title='after', fig_dir=path_figs,
                  fig_file='9_after_t1_lesion' + ext_fig)
+    plt.show()
     plt.close('all')
 
     # save the info in the .csv file
