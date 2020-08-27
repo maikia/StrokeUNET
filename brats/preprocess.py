@@ -20,7 +20,7 @@ if os.environ.get('DISPLAY'):
     N_JOBS = 1
 else:
     # running on the server
-    N_JOBS = 2
+    N_JOBS = -1
 
 mem = Memory('./')
 
@@ -556,7 +556,7 @@ if __name__ == "__main__":
     dataset_name = 'dataset_1'  # also dataset_2, TODO: dataset_healthy
     # rerun_all: if set to True, all the preprocessed data saved
     # so far will be removed
-    rerun_all = False  # careful !!
+    rerun_all = True  # careful !!
     ext_fig = '.png'
     csv_file = 'subject_info.csv'
 
@@ -571,7 +571,9 @@ if __name__ == "__main__":
     # http://www.bic.mni.mcgill.ca/ServicesAtlases/ICBM152NLin2009
     # use mni_icbm152_t1_tal_nlin_asym_09c.nii.gz for lower resolution
     # and smaller data size
-    template_file = 'mni_icbm152_t1_tal_nlin_asym_09b_hires.nii.gz'
+    # use mni_icbm152_t1_tal_nlin_asym_09b_hires for higher resolution
+    # but larger data size
+    template_file = 'mni_icbm152_t1_tal_nlin_asym_09c.nii.gz'
     template_brain = os.path.join('../../data/',
                                   'mne_template',
                                   template_file)
