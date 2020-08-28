@@ -12,11 +12,13 @@ class TestUtils(TestCase):
         original_image_shape = image.shape
         new_image = resize(image, target_shape)
         self.assertEqual(new_image.shape, target_shape)
-        new_image = resize(new_image, original_image_shape, interpolation="linear")
+        new_image = resize(new_image, original_image_shape,
+                           interpolation="linear")
         self.assertEqual(new_image.shape, original_image_shape)
 
     def _create_image(self, image_shape):
-        data = np.asarray(np.arange(np.prod(image_shape)).reshape(image_shape), dtype=np.float)
+        data = np.asarray(np.arange(np.prod(image_shape)).reshape(image_shape),
+                          dtype=np.float)
         affine = np.zeros((4, 4))
         np.fill_diagonal(affine, 1)
         return nib.Nifti1Image(data, affine)
@@ -32,12 +34,14 @@ class TestUtils(TestCase):
 
     def test_resize_image_2d(self):
         data = np.arange(1, 5).reshape((2, 2))
-        new_data = resample_to_spacing(data, (2, 2), (1, 1), interpolation="nearest")
+        new_data = resample_to_spacing(data, (2, 2), (1, 1),
+                                       interpolation="nearest")
         self.assertTrue(np.all(new_data == np.asarray([[1, 1, 2, 2],
                                                        [1, 1, 2, 2],
                                                        [3, 3, 4, 4],
                                                        [3, 3, 4, 4]])))
-        orig_data = resample_to_spacing(new_data, (1, 1), (2, 2), interpolation="linear")
+        orig_data = resample_to_spacing(new_data, (1, 1), (2, 2),
+                                        interpolation="linear")
         self.assertTrue(np.all(data == orig_data))
 
     def test_resize_image_3(self):
@@ -45,12 +49,14 @@ class TestUtils(TestCase):
 
     def test_resize_image_3d(self):
         data = np.arange(1, 9).reshape((2, 2, 2))
-        new_data = resample_to_spacing(data, (2, 2, 2), (1, 1, 1), interpolation="nearest")
+        new_data = resample_to_spacing(data, (2, 2, 2), (1, 1, 1),
+                                       interpolation="nearest")
         self.assertTrue(np.all(new_data[0] == np.asarray([[1, 1, 2, 2],
                                                           [1, 1, 2, 2],
                                                           [3, 3, 4, 4],
                                                           [3, 3, 4, 4]])))
-        orig_data = resample_to_spacing(new_data, (1, 1, 1), (2, 2, 2), interpolation="linear")
+        orig_data = resample_to_spacing(new_data, (1, 1, 1), (2, 2, 2),
+                                        interpolation="linear")
         self.assertTrue(np.all(data == orig_data))
 
     def test_images_align(self):
@@ -59,11 +65,13 @@ class TestUtils(TestCase):
         affine[3, 3] = 1
         image_nib = nib.Nifti1Image(data, affine=affine)
         new_image_nib = resize(image_nib, (4, 4, 4), interpolation="nearest")
-        self.assertTrue(np.all(new_image_nib.get_data()[0] == np.asarray([[1, 1, 2, 2],
-                                                                          [1, 1, 2, 2],
-                                                                          [3, 3, 4, 4],
-                                                                          [3, 3, 4, 4]])))
-        self.assertTrue(np.all(new_image_nib.affine == np.asarray([[1., 0., 0., -0.5],
-                                                                   [0., 1., 0., -0.5],
-                                                                   [0., 0., 1., -0.5],
-                                                                   [0., 0., 0., 1.]])))
+        self.assertTrue(np.all(
+            new_image_nib.get_data()[0] == np.asarray([[1, 1, 2, 2],
+                                                       [1, 1, 2, 2],
+                                                       [3, 3, 4, 4],
+                                                       [3, 3, 4, 4]])))
+        self.assertTrue(np.all(
+            new_image_nib.affine == np.asarray([[1., 0., 0., -0.5],
+                                                [0., 1., 0., -0.5],
+                                                [0., 0., 1., -0.5],
+                                                [0., 0., 0., 1.]])))
