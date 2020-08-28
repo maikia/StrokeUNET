@@ -105,18 +105,18 @@ def draw_image_masks(brain_img, true_mask,
     my_cmap_true = cm.PiYG
     my_cmap_true.set_under('k', alpha=0)
 
-    plt.subplot(1,1,1)
-    plt.imshow(brain_img, cmap='Greys')#, alpha = 0.5)
-    im = plt.imshow(predicted_mask, cmap=my_cmap_predict, 
-            interpolation='none', 
-            clim=[0.9, 1], alpha = 0.5)
-    im = plt.imshow(true_mask, cmap=my_cmap_true, 
-            interpolation='none', 
-            clim=[0.9, 1], alpha = 0.5)
+    plt.subplot(1, 1, 1)
+    plt.imshow(brain_img, cmap='Greys')  # , alpha = 0.5)
+    im = plt.imshow(predicted_mask, cmap=my_cmap_predict,
+                    interpolation='none',
+                    clim=[0.9, 1], alpha=0.5)
+    im = plt.imshow(true_mask, cmap=my_cmap_true,
+                    interpolation='none', 
+                    clim=[0.9, 1], alpha=0.5)
 
 
 plt.figure()
-validation_dir = 'subject_22'
+validation_dir = 'subject_8'
 idx = 70
 
 val_dir = os.path.join(prediction_dir, validation_dir)

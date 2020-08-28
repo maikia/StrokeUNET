@@ -88,7 +88,7 @@ def write_image_data_to_file(image_files, data_storage, truth_storage,
                             truth_dtype)
 
     df = pd.DataFrame.from_records(rows, columns=header)  # ,index=subject_ids)
-    df.to_csv(r'data/File_index.csv')
+    df.to_csv(r'data/.csv')
     print('wrote to file: data/File_index.csv')
     return data_storage, truth_storage
     '''
@@ -204,10 +204,15 @@ def write_data_to_file(training_data_files, out_file, image_shape,
 # this function should not be here
 def plot_from_data_storage(data_storage, title, idx, ext='png',
                            imgs_dir='../brats/imgs'):
-    plt.imshow(data_storage[idx, 0, :, :, 70])
-    file_name = title+'_idx'+str(idx)+ext
-    file_path = os.path.join(imgs_dir, file_name)
-    plt.savefig(file_path)
+    if data_storage.shape[0] > idx:
+        plt.imshow(data_storage[idx, 0, :, :, 70])
+        file_name = title+'_idx'+str(idx)+ext
+        file_path = os.path.join(imgs_dir, file_name)
+        plt.savefig(file_path)
+    else:
+        # TODO: only temporary. could raise warning or change to existing idx
+        print(f'size of the data is {data_storage.shape}. {idx} idx does not'
+              ' exist')
 
 
 def open_data_file(filename, readwrite="r"):
