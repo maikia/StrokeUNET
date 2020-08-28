@@ -1,9 +1,12 @@
 import nibabel as nib
 import numpy as np
+import os
+import pytest
 import sys
 
 sys.path.append('./')
 from unet3d.utils.utils import resize  # noqa: E402
+from unet3d.utils.utils import find_dirs  # noqa: E402
 from unet3d.utils.sitk_utils import resample_to_spacing  # noqa: E402
 
 
@@ -22,6 +25,18 @@ def _create_image(image_shape):
     affine = np.zeros((4, 4))
     np.fill_diagonal(affine, 1)
     return nib.Nifti1Image(data, affine)
+
+
+@pytest.mark.parametrize('end_dir,expected',
+                         [('test', 1),
+                          ('doc', 0)])
+def test_find_dirs(end_dir, expected):
+    # check for the directories with .py. the directories of this project are
+    # used. could be better to have test directories
+    raw_dir = os.path.join(os.getcwd(), end_dir)
+    ext = '.py'
+    my_dirs = find_dirs(raw_dir, ext)
+    assert len(my_dirs) == expected
 
 
 def test_resize_image_1():

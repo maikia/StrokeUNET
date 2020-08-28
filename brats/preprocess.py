@@ -7,14 +7,14 @@ import shutil
 import subprocess
 import warnings
 
-import matplotlib.pylab as plt
-import numpy as np
-import pandas as pd
-
 from joblib import Memory, Parallel, delayed
+import matplotlib.pylab as plt
 from nilearn import plotting
 from nilearn.image import load_img, math_img, new_img_like
 from nipype.interfaces.fsl import BET
+import numpy as np
+import pandas as pd
+from unet3d.utils import find_dirs
 
 if os.environ.get('DISPLAY'):
     N_JOBS = 1
@@ -23,28 +23,6 @@ else:
     N_JOBS = -1
 
 mem = Memory('./')
-
-
-def find_dirs(raw_dir='data/', ext='.nii.gz'):
-    """searches for the directories within the given directory and up the tree
-    which contain at least one file with a given extension.
-    ----------
-    raw_dir : string or path to the directory to be searched
-    ext : string, extension to the searched for files, eg '.png' :
-    Returns
-    -------
-    path_list
-        list of the directories which contain at least a single file with `ext`
-        extension
-    """
-    path_list = []
-    for dirname, dirnames, filenames in os.walk(raw_dir):
-        # save directories with all filenames ending on `ext`
-        for filename in filenames:
-            if filename[-len(ext):] == ext:
-                path_list.append(dirname)
-                break
-    return path_list
 
 
 def apply_mask_to_image(mask, img):

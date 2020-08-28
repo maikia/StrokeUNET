@@ -10,6 +10,28 @@ from .nilearn_custom_utils.nilearn_utils import crop_img_to
 from .sitk_utils import resample_to_spacing, calculate_origin_offset
 
 
+def find_dirs(raw_dir='data/', ext='.nii.gz'):
+    """searches for the directories within the given directory and up the tree
+    which contain at least one file with a given extension.
+    ----------
+    raw_dir : string or path to the directory to be searched
+    ext : string, extension to the searched for files, eg '.png' :
+    Returns
+    -------
+    path_list
+        list of the directories which contain at least a single file with `ext`
+        extension
+    """
+    path_list = []
+    for dirname, dirnames, filenames in os.walk(raw_dir):
+        # save directories with all filenames ending on `ext`
+        for filename in filenames:
+            if filename[-len(ext):] == ext:
+                path_list.append(dirname)
+                break
+    return path_list
+
+
 def pickle_dump(item, out_file):
     with open(out_file, "wb") as opened_file:
         pickle.dump(item, opened_file)
