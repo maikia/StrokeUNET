@@ -1,4 +1,3 @@
-import glob
 import os
 import sys
 
@@ -20,10 +19,9 @@ config["patch_shape"] = None  # switch to None to train on the whole image
 config["labels"] = (1,)  # the label numbers on the input image, eg (1, 2, 4)
 config["n_base_filters"] = 16
 config["n_labels"] = len(config["labels"])
-config["modality"] = "no_skull_norm_t1.nii.gz"  # string, which should be
-# included within the name of the t1 files (note, that differs from original
-# ellisdg settings)
-config["training_modalities"] = config["modality"]
+config["filename_T1"] = "no_skull_norm_t1.nii.gz"  # name of the T1 files
+# (note, that differs from original ellisdg settings)
+config["filename_truth"] = "no_skull_norm_lesion.nii.gz"
 config["nb_channels"] = 1
 if "patch_shape" in config and config["patch_shape"] is not None:
     config["input_shape"] = tuple([config["nb_channels"]] +
@@ -72,18 +70,18 @@ config["overwrite"] = True  # If True, will overwrite previous files.
 def fetch_training_data_files(return_subject_ids=False):
     training_data_files = list()
     subject_ids = list()
-    subject_dirs = find_dirs('data/', config["modality"])
+    subject_dirs = find_dirs('data/', config["filename_T1"])
     for subject_dir in subject_dirs:
         # TODO: this part should be simplified
         subject_ids.append(os.path.basename(subject_dir))
         subject_files = list()
-        # for modality in config["training_modalities"] + ["truth"]:
+        # append T1 files
         subject_files.append(os.path.join(subject_dir,
-                                          config["modality"])
+                                          config["filename_T1"])
                              )
         # append also the lesion files
         subject_files.append(os.path.join(subject_dir,
-                                          'no_skull_norm_lesion.nii.gz')
+                                          config["filename_truth"])
                              )
         training_data_files.append(tuple(subject_files))
     if return_subject_ids:
