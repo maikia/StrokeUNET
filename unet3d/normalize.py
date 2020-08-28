@@ -1,18 +1,21 @@
 import os
 
-import numpy as np
+import matplotlib.pyplot as plt
 from nilearn.image import new_img_like
+import numpy as np
+from sklearn.preprocessing import StandardScaler
 
 from unet3d.utils.utils import resize, read_image_files
 from .utils import crop_img, crop_img_to, read_image
-from .utils import pickle_dump, pickle_load
+from .utils import pickle_load
 
 
 def find_downsized_info(training_data_files, input_shape):
     foreground = get_complete_foreground(training_data_files)
     crop_slices = crop_img(foreground, return_slices=True, copy=True)
     cropped = crop_img_to(foreground, crop_slices, copy=True)
-    final_image = resize(cropped, new_shape=input_shape, interpolation="nearest")
+    final_image = resize(cropped, new_shape=input_shape,
+                         interpolation="nearest")
     return crop_slices, final_image.affine, final_image.header
 
 
@@ -20,16 +23,19 @@ def get_cropping_parameters(in_files):
     if len(in_files) > 1:
         foreground = get_complete_foreground(in_files)
     else:
-        foreground = get_foreground_from_set_of_files(in_files[0], return_image=True)
+        foreground = get_foreground_from_set_of_files(in_files[0],
+                                                      return_image=True)
     return crop_img(foreground, return_slices=True, copy=True)
 
 
-def reslice_image_set(in_files, image_shape, out_files=None, label_indices=None, crop=False):
+def reslice_image_set(in_files, image_shape, out_files=None,
+                      label_indices=None, crop=False):
     if crop:
         crop_slices = get_cropping_parameters([in_files])
     else:
         crop_slices = None
-    images = read_image_files(in_files, image_shape=image_shape, crop=crop_slices, label_indices=label_indices)
+    images = read_image_files(in_files, image_shape=image_shape,
+                              crop=crop_slices, label_indices=label_indices)
     if out_files:
         for image, out_file in zip(images, out_files):
             image.to_filename(out_file)
@@ -49,11 +55,13 @@ def get_complete_foreground(training_data_files):
     return new_img_like(read_image(training_data_files[0][-1]), foreground)
 
 
-def get_foreground_from_set_of_files(set_of_files, background_value=0, tolerance=0.00001, return_image=False):
+def get_foreground_from_set_of_files(set_of_files, background_value=0,
+                                     tolerance=0.00001, return_image=False):
     for i, image_file in enumerate(set_of_files):
         image = read_image(image_file)
-        is_foreground = np.logical_or(image.get_data() < (background_value - tolerance),
-                                      image.get_data() > (background_value + tolerance))
+        is_foreground = np.logical_or(
+            image.get_data() < (background_value - tolerance),
+            image.get_data() > (background_value + tolerance))
         if i == 0:
             foreground = np.zeros(is_foreground.shape, dtype=np.uint8)
 
@@ -85,12 +93,12 @@ def normalize_data_storage(data_storage):
 
 
 def normalize_data_by_train(data_storage):
-    # it normalizes each image separately and calculates mean and std on 
+    # it normalizes each image separately and calculates mean and std on
     # previously defined training set (if the training set changes this should
     # also change)
-    from sklearn.preprocessing import StandardScaler
-    import pandas as pd
-    training_list = pickle_load(os.path.abspath("training_ids.pkl")) # careful, normally name of the datafile is not hardcoded
+
+    training_list = pickle_load(os.path.abspath("training_ids.pkl"))  # careful
+    # normally name of the datafile is not hardcoded
     scalar = StandardScaler()
 
     for index in range(data_storage.shape[0]):
@@ -100,23 +108,23 @@ def normalize_data_by_train(data_storage):
         # take only training images
         if index in training_list:
             img_shape = data.shape
-            img_reshape = np.reshape(data, 
-                            img_shape[0]*img_shape[1]*img_shape[2]*img_shape[3])
-            scalar.partial_fit([img_reshape])  
+            img_reshape = np.reshape(
+                data, img_shape[0]*img_shape[1]*img_shape[2]*img_shape[3])
+            scalar.partial_fit([img_reshape])
 
-    imgs_mean = np.reshape(scalar.mean_, [img_shape[0], img_shape[1], img_shape[2], img_shape[3]]) 
-    imgs_std = np.reshape(scalar.scale_, [img_shape[0], img_shape[1], img_shape[2], img_shape[3]]) 
+    imgs_mean = np.reshape(scalar.mean_, [img_shape[0], img_shape[1],
+                                          img_shape[2], img_shape[3]])
+    imgs_std = np.reshape(scalar.scale_, [img_shape[0], img_shape[1],
+                                          img_shape[2], img_shape[3]])
 
-    #imgs_mean2 = np.mean(data_storage[training_list,...],0) # another way to calculate mean
+    # imgs_mean2 = np.mean(data_storage[training_list,...],0) # another way to
+    # calculate mean
 
-    # temporarily plot. remove later   
-    import matplotlib.pyplot as plt
-    plt.imshow(imgs_mean[0,:,:,70])
+    # temporarily plot. remove later
+    plt.imshow(imgs_mean[0, :, :, 70])
     plt.savefig('../brats/imgs/overall_mean.png')
 
     for index in range(data_storage.shape[0]):
         # normalize all the images
         data_storage[index] = (data_storage[index] - imgs_mean)/imgs_std
     return data_storage
-
-
