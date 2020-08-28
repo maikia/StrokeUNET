@@ -1,41 +1,58 @@
 import os
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import tables
 
-from .normalize import normalize_data_storage, reslice_image_set, normalize_data_by_train
-from .utils import pickle_dump, pickle_load
+from .normalize import normalize_data_storage
+from .normalize import reslice_image_set
+from .utils import pickle_load
+
 
 def create_data_file(out_file, n_channels, n_samples, image_shape):
     hdf5_file = tables.open_file(out_file, mode='w')
     filters = tables.Filters(complevel=5, complib='blosc')
     data_shape = tuple([0, n_channels] + list(image_shape))
     truth_shape = tuple([0, 1] + list(image_shape))
-    data_storage = hdf5_file.create_earray(hdf5_file.root, 'data', tables.Float32Atom(), shape=data_shape,
-                                           filters=filters, expectedrows=n_samples)
-    truth_storage = hdf5_file.create_earray(hdf5_file.root, 'truth', tables.UInt8Atom(), shape=truth_shape,
-                                            filters=filters, expectedrows=n_samples)
-    affine_storage = hdf5_file.create_earray(hdf5_file.root, 'affine', tables.Float32Atom(), shape=(0, 4, 4),
-                                             filters=filters, expectedrows=n_samples)
+    data_storage = hdf5_file.create_earray(hdf5_file.root, 'data',
+                                           tables.Float32Atom(),
+                                           shape=data_shape,
+                                           filters=filters,
+                                           expectedrows=n_samples)
+    truth_storage = hdf5_file.create_earray(hdf5_file.root, 'truth',
+                                            tables.UInt8Atom(),
+                                            shape=truth_shape,
+                                            filters=filters,
+                                            expectedrows=n_samples)
+    affine_storage = hdf5_file.create_earray(hdf5_file.root, 'affine',
+                                             tables.Float32Atom(),
+                                             shape=(0, 4, 4),
+                                             filters=filters,
+                                             expectedrows=n_samples)
     return hdf5_file, data_storage, truth_storage, affine_storage
 
 
-def write_image_data_to_file(image_files, data_storage, truth_storage, image_shape, n_channels, affine_storage,
+def write_image_data_to_file(image_files, data_storage, truth_storage,
+                             image_shape, n_channels, affine_storage,
                              truth_dtype=np.uint8, crop=True):
-    # it will save all of the assigned indices and the corresponding paths of the files
-    import pandas as pd
+    # it will save all of the assigned indices and the corresponding paths
+    # of the files
+
     rows = list()
     header = ("t1_path", "truth_path", "idx_ref", "is_train")
 
-    # if later overwrite is set and the new training and validation set will be chosen
+    # if later overwrite is set and the new training and validation set will
+    # be chosen
     # the mean of training images will be wrongly calculated
-    #training_file = os.path.abspath("training_ids.pkl")
-    #validation_file = os.path.abspath("validation_ids.pkl")
-    try:
-        training_list = pickle_load(os.path.abspath("training_ids.pkl")) # careful, normally not hardcoded
-    except:
-        import pdb; pdb.set_trace()
+    # training_file = os.path.abspath("training_ids.pkl")
+    # validation_file = os.path.abspath("validation_ids.pkl")
+    # try:
+    training_list = pickle_load(os.path.abspath("training_ids.pkl"))
+    # careful, normally not hardcoded
+    # except:
+    #    import pdb
+    #    pdb.set_trace()
 
     for idx, set_of_files in enumerate(image_files):
         # create reference .csv file
@@ -47,94 +64,109 @@ def write_image_data_to_file(image_files, data_storage, truth_storage, image_sha
 
         rows.append([set_of_files[0], set_of_files[1], idx, is_train])
 
-        images = reslice_image_set(set_of_files, image_shape, label_indices=len(set_of_files) - 1, crop=crop)
+        images = reslice_image_set(set_of_files, image_shape,
+                                   label_indices=len(set_of_files) - 1,
+                                   crop=crop)
         subject_data = [image.get_data() for image in images]
-        add_data_to_storage(data_storage, truth_storage, affine_storage, subject_data, images[0].affine, n_channels,
+        add_data_to_storage(data_storage, truth_storage, affine_storage,
+                            subject_data, images[0].affine, n_channels,
                             truth_dtype)
 
-    df = pd.DataFrame.from_records(rows, columns=header) #, index=subject_ids)
+    df = pd.DataFrame.from_records(rows, columns=header)  # ,index=subject_ids)
     df.to_csv(r'data/File_index.csv')
     print('wrote to file: data/File_index.csv')
     return data_storage, truth_storage
 
 
-def add_data_to_storage(data_storage, truth_storage, affine_storage, subject_data, affine, n_channels, truth_dtype):
+def add_data_to_storage(data_storage, truth_storage, affine_storage,
+                        subject_data, affine, n_channels, truth_dtype):
     data_storage.append(np.asarray(subject_data[:n_channels])[np.newaxis])
-    truth_storage.append(np.asarray(subject_data[n_channels], dtype=truth_dtype)[np.newaxis][np.newaxis])
+    truth_storage.append(np.asarray(subject_data[n_channels],
+                         dtype=truth_dtype)[np.newaxis][np.newaxis])
     affine_storage.append(np.asarray(affine)[np.newaxis])
     '''
     if np.sum(np.asarray(subject_data[1:])[0,:,:,72]) > 0:
         plt.figure()
         plt.subplot(1,2,2)
-        plt.imshow(np.asarray(subject_data[n_channels])[:,:,72])#, dtype=truth_dtype)[:,:,72])
+        plt.imshow(np.asarray(subject_data[n_channels])[:,:,72])
+        #, dtype=truth_dtype)[:,:,72])
         plt.subplot(1,2,1)
-        plt.imshow(np.asarray(subject_data[:n_channels])[np.newaxis][0,0,:,:,72])
+        plt.imshow(
+            np.asarray(subject_data[:n_channels])[np.newaxis][0,0,:,:,72])
         plt.savefig('temp.png')
         import pdb; pdb.set_trace()
     '''
 
 
-def write_data_to_file(training_data_files, out_file, image_shape, truth_dtype=np.uint8, subject_ids=None,
+def write_data_to_file(training_data_files, out_file, image_shape,
+                       truth_dtype=np.uint8, subject_ids=None,
                        normalize=True, crop=True):
     """
     Takes in a set of training images and writes those images to an hdf5 file.
-    :param training_data_files: List of tuples containing the training data files. The modalities should be listed in
-    the same order in each tuple. The last item in each tuple must be the labeled image. 
-    Example: [('sub1-T1.nii.gz', 'sub1-T2.nii.gz', 'sub1-truth.nii.gz'), 
+    :param training_data_files: List of tuples containing the training data
+        files. The modalities should be listed in the same order in each tuple.
+        The last item in each tuple must be the labeled image.
+    Example: [('sub1-T1.nii.gz', 'sub1-T2.nii.gz', 'sub1-truth.nii.gz'),
               ('sub2-T1.nii.gz', 'sub2-T2.nii.gz', 'sub2-truth.nii.gz')]
     :param out_file: Where the hdf5 file will be written to.
-    :param image_shape: Shape of the images that will be saved to the hdf5 file.
-    :param truth_dtype: Default is 8-bit unsigned integer. 
-    :return: Location of the hdf5 file with the image data written to it. 
+    :param image_shape: Shape of the images that will be saved to the hdf5
+        file.
+    :param truth_dtype: Default is 8-bit unsigned integer.
+    :return: Location of the hdf5 file with the image data written to it.
     """
     n_samples = len(training_data_files)
     n_channels = len(training_data_files[0]) - 1
 
     try:
         # initiates .h5 file
-        hdf5_file, data_storage, truth_storage, affine_storage = create_data_file(out_file,
-                                                                                  n_channels=n_channels,
-                                                                                  n_samples=n_samples,
-                                                                                  image_shape=image_shape)
+        hdf5_file, data_storage, truth_storage, affine_storage = \
+            create_data_file(out_file,
+                             n_channels=n_channels,
+                             n_samples=n_samples,
+                             image_shape=image_shape)
     except Exception as e:
         # If something goes wrong, delete the incomplete data file
         os.remove(out_file)
         raise e
-    write_image_data_to_file(training_data_files, data_storage, truth_storage, image_shape,
-                             truth_dtype=truth_dtype, n_channels=n_channels, affine_storage=affine_storage, crop=crop)
+    write_image_data_to_file(training_data_files, data_storage,
+                             truth_storage, image_shape,
+                             truth_dtype=truth_dtype, n_channels=n_channels,
+                             affine_storage=affine_storage, crop=crop)
     if subject_ids:
         hdf5_file.create_array(hdf5_file.root, 'subject_ids', obj=subject_ids)
     if normalize:
         idx1, idx2 = 100, 256
         ext = '.png'
-        imgs_dir='../brats/imgs'
-        if not os.path.exists(imgs_dir): 
-                        os.makedirs(imgs_dir)
-        plot_from_data_storage(data_storage, title='before_norm', idx=idx1, 
-                            ext=ext, imgs_dir=imgs_dir)
-        plot_from_data_storage(data_storage, title='before_norm', idx=idx2, 
-                            ext=ext, imgs_dir=imgs_dir)
+        imgs_dir = '../brats/imgs'
+        if not os.path.exists(imgs_dir):
+            os.makedirs(imgs_dir)
+
+        plot_from_data_storage(data_storage, title='before_norm', idx=idx1,
+                               ext=ext, imgs_dir=imgs_dir)
+        plot_from_data_storage(data_storage, title='before_norm', idx=idx2,
+                               ext=ext, imgs_dir=imgs_dir)
 
         # normalization done in the original code
         normalize_data_storage(data_storage)
-        print('1, max, min of mean: ', str(np.max(data_storage)), str(np.min(data_storage)))
-        plot_from_data_storage(data_storage, title='after_norm1', idx=idx1, 
-                                ext=ext, imgs_dir=imgs_dir)
-        plot_from_data_storage(data_storage, title='after_norm1', idx=idx2, 
-                                ext=ext, imgs_dir=imgs_dir)
+        print('1, max, min of mean: ', str(np.max(data_storage)),
+              str(np.min(data_storage)))
+        plot_from_data_storage(data_storage, title='after_norm1', idx=idx1,
+                               ext=ext, imgs_dir=imgs_dir)
+        plot_from_data_storage(data_storage, title='after_norm1', idx=idx2,
+                               ext=ext, imgs_dir=imgs_dir)
 
         '''
         # normalization by the training datas mean and
         normalize_data_by_train(data_storage)
-        print('2, max, min of mean: ', str(np.max(data_storage)), str(np.min(data_storage)))
-        plot_from_data_storage(data_storage, title='after_norm2', idx=idx1, 
+        print('2, max, min of mean: ', str(np.max(data_storage)),
+              str(np.min(data_storage)))
+        plot_from_data_storage(data_storage, title='after_norm2', idx=idx1,
                                 ext=ext, imgs_dir=imgs_dir)
-        plot_from_data_storage(data_storage, title='after_norm2', idx=idx2, 
+        plot_from_data_storage(data_storage, title='after_norm2', idx=idx2,
                                 ext=ext, imgs_dir=imgs_dir)
-        
-        plot_from_data_storage(truth_storage, title='mask', idx=idx1, 
+        plot_from_data_storage(truth_storage, title='mask', idx=idx1,
                                 ext=ext, imgs_dir=imgs_dir)
-        plot_from_data_storage(truth_storage, title='mask', idx=idx2, 
+        plot_from_data_storage(truth_storage, title='mask', idx=idx2,
                                 ext=ext, imgs_dir=imgs_dir)
         '''
         plt.close('all')
@@ -142,10 +174,11 @@ def write_data_to_file(training_data_files, out_file, image_shape, truth_dtype=n
     hdf5_file.close()
     return out_file
 
+
 # this function should not be here
-def plot_from_data_storage(data_storage, title, idx, ext = 'png',
-                        imgs_dir='../brats/imgs'):
-    plt.imshow(data_storage[idx,0,:,:,70])
+def plot_from_data_storage(data_storage, title, idx, ext='png',
+                           imgs_dir='../brats/imgs'):
+    plt.imshow(data_storage[idx, 0, :, :, 70])
     file_name = title+'_idx'+str(idx)+ext
     file_path = os.path.join(imgs_dir, file_name)
     plt.savefig(file_path)
