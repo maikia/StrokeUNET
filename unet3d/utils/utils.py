@@ -24,19 +24,22 @@ def get_affine(in_file):
     return read_image(in_file).affine
 
 
-def read_image_files(image_files, image_shape=None, crop=None, label_indices=None):
+def read_image_files(image_files, image_shape=None, crop=None,
+                     label_indices=None):
     """
-    
-    :param image_files: 
-    :param image_shape: 
-    :param crop: 
-    :param use_nearest_for_last_file: If True, will use nearest neighbor interpolation for the last file. This is used
-    because the last file may be the labels file. Using linear interpolation here would mess up the labels.
-    :return: 
+    :param image_files:
+    :param image_shape:
+    :param crop:
+    :param use_nearest_for_last_file: If True, will use nearest neighbor
+        interpolation for the last file. This is used because the last file may
+        be the labels file. Using linear interpolation here would mess up the
+        labels.
+    :return:
     """
     if label_indices is None:
         label_indices = []
-    elif not isinstance(label_indices, collections.Iterable) or isinstance(label_indices, str):
+    elif (not isinstance(label_indices, collections.Iterable) or
+          isinstance(label_indices, str)):
         label_indices = [label_indices]
     image_list = list()
     for index, image_file in enumerate(image_files):
@@ -45,7 +48,8 @@ def read_image_files(image_files, image_shape=None, crop=None, label_indices=Non
             interpolation = "nearest"
         else:
             interpolation = "linear"
-        image_list.append(read_image(image_file, image_shape=image_shape, crop=crop, interpolation=interpolation))
+        image_list.append(read_image(image_file, image_shape=image_shape,
+                                     crop=crop, interpolation=interpolation))
 
     return image_list
 
@@ -59,7 +63,7 @@ def read_image(in_file, image_shape=None, interpolation='linear', crop=None):
         import matplotlib.pylab as plt
         plt.figure()
         plt.imshow(image.get_data()[:,:,72])
-        plt.savefig('temp_temp_1.png')      
+        plt.savefig('temp_temp_1.png')
     elif not(in_file[-12:] == 'truth.nii.gz'):
         import matplotlib.pylab as plt
         plt.figure()
@@ -70,9 +74,10 @@ def read_image(in_file, image_shape=None, interpolation='linear', crop=None):
     if crop:
         image = crop_img_to(image, crop, copy=True)
     if image_shape:
-        image = resize(image, new_shape=image_shape, interpolation=interpolation)
-    #else:
-    #    return image
+        image = resize(image, new_shape=image_shape,
+                       interpolation=interpolation)
+    else:
+        return image
     '''
     if crop or image_shape:
         if in_file[-12:] == 'truth.nii.gz' and np.sum(image.get_data()) > 0:
@@ -80,7 +85,6 @@ def read_image(in_file, image_shape=None, interpolation='linear', crop=None):
             plt.figure()
             plt.imshow(image.get_data()[:,:,72])
             plt.savefig('temp_mask_2.png')
-            import pdb; pdb.set_trace()        
         elif not(in_file[-12:] == 'truth.nii.gz'):
             import matplotlib.pylab as plt
             plt.figure()
@@ -90,19 +94,24 @@ def read_image(in_file, image_shape=None, interpolation='linear', crop=None):
     '''
     return image
 
+
 def fix_shape(image):
     if image.shape[-1] == 1:
-        return image.__class__(dataobj=np.squeeze(image.get_data()), affine=image.affine)
+        return image.__class__(dataobj=np.squeeze(image.get_data()),
+                               affine=image.affine)
     return image
 
 
 def resize(image, new_shape, interpolation="linear"):
-    #image = reorder_img(image, resample=interpolation) # the image is transposed (??)
+    image = reorder_img(image, resample=interpolation)  # the image is
+    # transposed (??)
     zoom_level = np.divide(new_shape, image.shape)
     new_spacing = np.divide(image.header.get_zooms(), zoom_level)
-    new_data = resample_to_spacing(image.get_data(), image.header.get_zooms(), new_spacing,
+    new_data = resample_to_spacing(image.get_data(), image.header.get_zooms(),
+                                   new_spacing,
                                    interpolation=interpolation)
     new_affine = np.copy(image.affine)
     np.fill_diagonal(new_affine, new_spacing.tolist() + [1])
-    new_affine[:3, 3] += calculate_origin_offset(new_spacing, image.header.get_zooms())
+    new_affine[:3, 3] += calculate_origin_offset(new_spacing,
+                                                 image.header.get_zooms())
     return new_img_like(image, new_data, affine=new_affine)
