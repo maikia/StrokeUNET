@@ -1,13 +1,16 @@
 import glob
 import os
+import sys
 
-from unet3d.data import open_data_file, write_data_to_file
-from unet3d.generator import get_training_and_validation_generators
-from unet3d.model import isensee2017_model
-from unet3d.training import load_old_model, train_model
+sys.path.append('./')
+from unet3d.data import open_data_file, write_data_to_file  # noqa: E402
+from unet3d.generator import get_training_and_validation_generators  # noqa: E402
+from unet3d.model import isensee2017_model  # noqa: E402
+from unet3d.training import load_old_model, train_model  # noqa: E402
+from unet3d.utils.utils import find_dirs  # noqa: E402
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 
 config = dict()
@@ -17,10 +20,11 @@ config["patch_shape"] = None  # switch to None to train on the whole image
 config["labels"] = (1,)  # the label numbers on the input image, eg (1, 2, 4)
 config["n_base_filters"] = 16
 config["n_labels"] = len(config["labels"])
-config["all_modalities"] = ["t1"]  # sets of data, eg: ["t1ce", "flair", "t2"]
-config["training_modalities"] = config["all_modalities"]  # change this if you
-# want to only use some of the modalities:
-config["nb_channels"] = len(config["training_modalities"])
+config["modality"] = "no_skull_norm_t1.nii.gz"  # string, which should be
+# included within the name of the t1 files (note, that differs from original
+# ellisdg settings)
+config["training_modalities"] = config["modality"]
+config["nb_channels"] = 1
 if "patch_shape" in config and config["patch_shape"] is not None:
     config["input_shape"] = tuple([config["nb_channels"]] +
                                   list(config["patch_shape"])
@@ -61,26 +65,26 @@ config["data_file"] = os.path.abspath("brats_data.h5")
 config["model_file"] = os.path.abspath("unet_model.h5")
 config["training_file"] = os.path.abspath("training_ids.pkl")
 config["validation_file"] = os.path.abspath("validation_ids.pkl")
-config["overwrite"] = False  # If True, will overwrite previous files.
+config["overwrite"] = True  # If True, will overwrite previous files.
 # If False, will use previously written files.
 
 
 def fetch_training_data_files(return_subject_ids=False):
     training_data_files = list()
     subject_ids = list()
-    for subject_dir in glob.glob(
-            os.path.join(os.path.dirname(__file__),
-                         "data",
-                         "preprocessed",
-                         "*",
-                         "*"
-                         )):
+    subject_dirs = find_dirs('data/', config["modality"])
+    for subject_dir in subject_dirs:
+        # TODO: this part should be simplified
         subject_ids.append(os.path.basename(subject_dir))
         subject_files = list()
-        for modality in config["training_modalities"] + ["truth"]:
-            subject_files.append(os.path.join(subject_dir,
-                                              modality + ".nii.gz")
-                                 )
+        # for modality in config["training_modalities"] + ["truth"]:
+        subject_files.append(os.path.join(subject_dir,
+                                          config["modality"])
+                             )
+        # append also the lesion files
+        subject_files.append(os.path.join(subject_dir,
+                                          'no_skull_norm_lesion.nii.gz')
+                             )
         training_data_files.append(tuple(subject_files))
     if return_subject_ids:
         return training_data_files, subject_ids

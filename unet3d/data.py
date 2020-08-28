@@ -2,12 +2,10 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import tables
 
 from .normalize import normalize_data_storage
 from .normalize import reslice_image_set
-from .utils import pickle_load
 
 
 def create_data_file(out_file, n_channels, n_samples, image_shape):
@@ -155,7 +153,8 @@ def write_data_to_file(training_data_files, out_file, image_shape,
     if subject_ids:
         hdf5_file.create_array(hdf5_file.root, 'subject_ids', obj=subject_ids)
     if normalize:
-        idx1, idx2 = 100, 256
+        # TODO: choose existing index
+        idx1, idx2 = 50, 120
         ext = '.png'
         imgs_dir = '../brats/imgs'
         if not os.path.exists(imgs_dir):
