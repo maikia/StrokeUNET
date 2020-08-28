@@ -1,36 +1,13 @@
-# 3D U-Net Convolution Neural Network with Keras
-![Tumor Segmentation Example](doc/tumor_segmentation_illusatration.gif)
+# 3D U-Net Convolution Neural Network with Keras for lesion segmentation of
+# stroke patient T1 images
+# TODO: ![Tumor Segmentation Example](doc/tumor_segmentation_illusatration.gif)
 ## Background
 This code is based on [3DUnetCNN](https://github.com/ellisdg/3DUnetCNN) (tumor
 segmentation from the MRI images using 3D UNET).
 
 It is adapted for lesion segmentation of stroke patient images.
 
-1. First run the preprocess.py on your data
-You will need to provide the path to where the images are stored, the
-strings identifying the T1 files and lesion images and the path to the
-output data. The preprocessing steps are:
-- combines lesions into one file if multiple files exist. Set all non-zero
-  values to 1 (we will work on binary masks)
-- remove the skull
-- correct bias
-- normalize to mni template (you can change for another template)
-
-Originally designed after [this paper](http://lmb.informatik.uni-freiburg.de/Publications/2016/CABR16/cicek16miccai.pdf) on
-volumetric segmentation with a 3D U-Net.
-The code was written to be trained using the
-[BRATS](http://www.med.upenn.edu/sbia/brats2017.html) data set for brain tumors, but it can
-be easily modified to be used in other 3D applications. 
-
-## Tutorial using BRATS Data
-### Training
-1. Download the BRATS 2018 data by following the steps outlined on the [BRATS 2018 competition page](https://www.med.upenn.edu/sbia/brats2018/registration.html).
-Place the unzipped folders in the
-```brats/data/original``` folder.
-(You can also get the older versions of the dataset without signing up:
-[LGG](https://app.box.com/shared/static/x75fzof83mmomea2yy9kshzj3tr9zni3.zip)
-[GBM](https://app.box.com/shared/static/l5zoa0bjp1pigpgcgakup83pzadm6wxs.zip))
-2. Install Python 3 and dependencies: 
+1. Install Python3 and all the dependencies:
 ```
 nibabel,
 keras,
@@ -39,7 +16,28 @@ nilearn,
 SimpleITK,
 nipype
 ```
-(nipype is required for preprocessing only) 
+(nipype is required for preprocessing only)
+
+2. First run the preprocess.py on your data
+
+You will need to provide the path to where the images are stored, the
+strings identifying the T1 files and lesion images and the path to the
+output data.
+
+The preprocessing steps are:
+- combines lesions into one file if multiple files exist. Set all non-zero
+  values to 1 (we will work on binary masks)
+- remove the skull
+- correct bias
+- normalize to mni template (you can change for another template)
+
+You will end up with the directory of each subject with the different `nii.gz`
+files stored in. Those correspond to different preprocessing steps. In this
+directories you will also find `figs` subdirectories with the `.png` plots of
+each preprocessing step.
+
+3. Train
+TODO
 
 3. Install [ANTs N4BiasFieldCorrection](https://github.com/stnava/ANTs/releases) and add the location of the ANTs 
 binaries to the PATH environmental variable.
