@@ -132,11 +132,13 @@ def write_data_to_file(training_data_files, out_file, image_shape,
     :param truth_dtype: Default is 8-bit unsigned integer.
     :return: Location of the hdf5 file with the image data written to it.
     """
-    n_samples = len(training_data_files)
+    n_samples = len(training_data_files)  # number of subjects
     n_channels = len(training_data_files[0]) - 1
+    assert n_channels == 1  # in the stroke data we only have T1 images and
+    # true lesion images
 
     try:
-        # initiates .h5 file
+        # 1. initiates .h5 file
         hdf5_file, data_storage, truth_storage, affine_storage = \
             create_data_file(out_file,
                              n_channels=n_channels,
@@ -146,10 +148,15 @@ def write_data_to_file(training_data_files, out_file, image_shape,
         # If something goes wrong, delete the incomplete data file
         os.remove(out_file)
         raise e
-    write_image_data_to_file(training_data_files, data_storage,
-                             truth_storage, image_shape,
-                             truth_dtype=truth_dtype, n_channels=n_channels,
-                             affine_storage=affine_storage, crop=crop)
+
+    write_image_data_to_file(training_data_files,
+                             data_storage,
+                             truth_storage,
+                             image_shape,
+                             truth_dtype=truth_dtype,
+                             n_channels=n_channels,
+                             affine_storage=affine_storage,
+                             crop=crop)
     if subject_ids:
         hdf5_file.create_array(hdf5_file.root, 'subject_ids', obj=subject_ids)
     if normalize:

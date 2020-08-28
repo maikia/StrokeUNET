@@ -116,22 +116,22 @@ def draw_image_masks(brain_img, true_mask,
 
 
 plt.figure()
-validation_dir = 'validation_case_365'
+validation_dir = 'subject_22'
 idx = 70
 
 val_dir = os.path.join(prediction_dir, validation_dir)
-path_t1 = os.path.join(val_dir, 'data_t1.nii.gz')
+path_t1 = os.path.join(val_dir, 'data_no_skull_norm_t1.nii.gz')
 path_true = os.path.join(val_dir, 'truth.nii.gz')
 path_predict = os.path.join(val_dir, 'prediction.nii.gz')
 brain_img = load_img(path_t1).get_data()
 true_mask = load_img(path_true).get_data()
 predicted_mask = load_img(path_predict).get_data()
-draw_image_masks(brain_img[:,:,idx], true_mask[:,:,idx],
-                predicted_mask[:,:,idx])
+draw_image_masks(brain_img[:, :, idx], true_mask[:, :, idx],
+                 predicted_mask[:, :, idx])
 plt.savefig(os.path.join(prediction_dir, validation_dir+'_mask_example' + ext))
 
     # make a movie
-def ani_frame(prediction_dir, validation_dir = 'validation_case_365'):
+def ani_frame(prediction_dir, validation_dir='validation_case_365'):
     dpi = 100
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -142,7 +142,7 @@ def ani_frame(prediction_dir, validation_dir = 'validation_case_365'):
     im = ax.imshow(rand(300,300),cmap='gray',interpolation='nearest')
     im.set_clim([0,1])
     fig.set_size_inches([5,5])
-    
+
     val_dir = os.path.join(prediction_dir, validation_dir)
     path_t1 = os.path.join(val_dir, 'data_t1.nii.gz')
     path_true = os.path.join(val_dir, 'truth.nii.gz')

@@ -135,10 +135,12 @@ def run_validation_case(data_index, output_dir, model, data_file,
 
     affine = data_file.root.affine[data_index]
     test_data = np.asarray([data_file.root.data[data_index]])
-    for i, modality in enumerate(training_modalities):
-        image = nib.Nifti1Image(test_data[0, i], affine)
-        image.to_filename(os.path.join(output_dir, "data_{0}.nii.gz".format(
-            modality)))
+    # for i, modality in enumerate(training_modalities):
+    i = 0
+    modality = training_modalities
+    image = nib.Nifti1Image(test_data[0, i], affine)
+    image.to_filename(os.path.join(output_dir, "data_{0}".format(
+        modality)))
 
     test_truth = nib.Nifti1Image(data_file.root.truth[data_index][0], affine)
     test_truth.to_filename(os.path.join(output_dir, "truth.nii.gz"))

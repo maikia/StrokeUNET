@@ -103,11 +103,12 @@ def fetch_training_data_files(data_dir='data/',
 
 
 def main(overwrite=False):
-    # convert input images into an hdf5 file
+    # run if the data not already stored hdf5
     if overwrite or not os.path.exists(config["data_file"]):
+        # fetch the data files
         training_files, subject_ids = fetch_training_data_files(
             return_subject_ids=True)
-
+        # write all the data files into the hdf5 file
         write_data_to_file(training_files,
                            config["data_file"],
                            image_shape=config["image_shape"],
