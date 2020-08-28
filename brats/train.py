@@ -19,9 +19,9 @@ config["patch_shape"] = None  # switch to None to train on the whole image
 config["labels"] = (1,)  # the label numbers on the input image, eg (1, 2, 4)
 config["n_base_filters"] = 16
 config["n_labels"] = len(config["labels"])
-config["filename_T1"] = "no_skull_norm_t1.nii.gz"  # name of the T1 files
+config["fname_T1"] = "no_skull_norm_t1.nii.gz"  # name of the T1 files
 # (note, that differs from original ellisdg settings)
-config["filename_truth"] = "no_skull_norm_lesion.nii.gz"
+config["fname_truth"] = "no_skull_norm_lesion.nii.gz"
 config["nb_channels"] = 1
 if "patch_shape" in config and config["patch_shape"] is not None:
     config["input_shape"] = tuple([config["nb_channels"]] +
@@ -59,7 +59,7 @@ config["training_patch_start_offset"] = (16, 16, 16)  # randomly offset the
 config["skip_blank"] = False  # if True, then patches without any target will
 # be skipped
 
-config["data_file"] = os.path.abspath("brats_data.h5")
+config["data_file"] = os.path.abspath("stroke_data.h5")
 config["model_file"] = os.path.abspath("unet_model.h5")
 config["training_file"] = os.path.abspath("training_ids.pkl")
 config["validation_file"] = os.path.abspath("validation_ids.pkl")
@@ -67,21 +67,33 @@ config["overwrite"] = True  # If True, will overwrite previous files.
 # If False, will use previously written files.
 
 
-def fetch_training_data_files(return_subject_ids=False):
+def fetch_training_data_files(data_dir='data/',
+                              return_subject_ids=False):
+    """
+    Takes in the directory with the peprocessed data and finds all the
+    subdirectories which include the T1 filename stored in
+    config["fname_T1"]. It returns tuples of the paths to T1 image capled
+    with the lesion image (with name stored in config["fname_lesion"]
+    :param data_dir: path to the data directory
+    :return_subject_ids: boolean, should the indices (name of the subdirectory
+        of the subject) be also returned
+    :return: list of tuples. Each tuple consists of the path to the T1 file and
+        path to the corresponding lesion
+    """
     training_data_files = list()
     subject_ids = list()
-    subject_dirs = find_dirs('data/', config["filename_T1"])
+
+    subject_dirs = find_dirs(data_dir, config["fname_T1"])
     for subject_dir in subject_dirs:
-        # TODO: this part should be simplified
         subject_ids.append(os.path.basename(subject_dir))
         subject_files = list()
         # append T1 files
         subject_files.append(os.path.join(subject_dir,
-                                          config["filename_T1"])
+                                          config["fname_T1"])
                              )
         # append also the lesion files
         subject_files.append(os.path.join(subject_dir,
-                                          config["filename_truth"])
+                                          config["fname_truth"])
                              )
         training_data_files.append(tuple(subject_files))
     if return_subject_ids:
