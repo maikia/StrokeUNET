@@ -1,12 +1,24 @@
 # 3D U-Net Convolution Neural Network with Keras
 ![Tumor Segmentation Example](doc/tumor_segmentation_illusatration.gif)
 ## Background
-This code is based on [this work](https://github.com/ellisdg/3DUnetCNN) on
-tumor segmentation from the MRI images using 3D UNET.
+This code is based on [3DUnetCNN](https://github.com/ellisdg/3DUnetCNN) (tumor
+segmentation from the MRI images using 3D UNET).
 
-Originally designed after [this paper](http://lmb.informatik.uni-freiburg.de/Publications/2016/CABR16/cicek16miccai.pdf) on 
+It is adapted for lesion segmentation of stroke patient images.
+
+1. First run the preprocess.py on your data
+You will need to provide the path to where the images are stored, the
+strings identifying the T1 files and lesion images and the path to the
+output data. The preprocessing steps are:
+- combines lesions into one file if multiple files exist. Set all non-zero
+  values to 1 (we will work on binary masks)
+- remove the skull
+- correct bias
+- normalize to mni template (you can change for another template)
+
+Originally designed after [this paper](http://lmb.informatik.uni-freiburg.de/Publications/2016/CABR16/cicek16miccai.pdf) on
 volumetric segmentation with a 3D U-Net.
-The code was written to be trained using the 
+The code was written to be trained using the
 [BRATS](http://www.med.upenn.edu/sbia/brats2017.html) data set for brain tumors, but it can
 be easily modified to be used in other 3D applications. 
 
