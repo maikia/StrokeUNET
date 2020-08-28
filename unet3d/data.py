@@ -35,7 +35,24 @@ def create_data_file(out_file, n_channels, n_samples, image_shape):
 
 def write_image_data_to_file(image_files, data_storage, truth_storage,
                              image_shape, n_channels, affine_storage,
-                             truth_dtype=np.uint8, crop=True):
+                             truth_dtype=np.uint8, crop=True,
+                             label_indices=None, save_truth=True):
+    # TODO: what does crop=True?
+    #
+    for set_of_files in image_files:
+
+        if label_indices is None:
+            _label_indices = len(set_of_files) - 1
+        else:
+            _label_indices = label_indices
+        images = reslice_image_set(set_of_files, image_shape,
+                                   label_indices=_label_indices, crop=crop)
+        subject_data = [image.get_data() for image in images]
+        add_data_to_storage(data_storage, truth_storage, affine_storage,
+                            subject_data, images[0].affine, n_channels,
+                            truth_dtype, save_truth=save_truth)
+    return data_storage, truth_storage
+    '''
     # it will save all of the assigned indices and the corresponding paths
     # of the files
 
@@ -76,13 +93,16 @@ def write_image_data_to_file(image_files, data_storage, truth_storage,
     df.to_csv(r'data/File_index.csv')
     print('wrote to file: data/File_index.csv')
     return data_storage, truth_storage
+    '''
 
 
 def add_data_to_storage(data_storage, truth_storage, affine_storage,
-                        subject_data, affine, n_channels, truth_dtype):
+                        subject_data, affine, n_channels, truth_dtype,
+                        save_truth=True):
     data_storage.append(np.asarray(subject_data[:n_channels])[np.newaxis])
-    truth_storage.append(np.asarray(subject_data[n_channels],
-                         dtype=truth_dtype)[np.newaxis][np.newaxis])
+    if save_truth:
+        truth_storage.append(np.asarray(subject_data[n_channels],
+                             dtype=truth_dtype)[np.newaxis][np.newaxis])
     affine_storage.append(np.asarray(affine)[np.newaxis])
     '''
     if np.sum(np.asarray(subject_data[1:])[0,:,:,72]) > 0:

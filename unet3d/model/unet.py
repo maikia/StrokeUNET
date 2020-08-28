@@ -5,15 +5,14 @@ from keras.engine import Input, Model
 from keras.layers import Activation, BatchNormalization, Conv3D
 from keras.layers import Deconvolution3D, MaxPooling3D, UpSampling3D
 from keras.layers.merge import concatenate
-
 from keras.optimizers import Adam
 import numpy as np
 
 from unet3d.metrics import dice_coefficient, dice_coefficient_loss
 from unet3d.metrics import get_label_dice_coefficient_function
 
-# K.set_image_data_format("channels_first")
-K.common.set_image_dim_ordering('th')
+# K.common.set_image_dim_ordering('th')
+K.set_image_data_format('channels_first')
 
 
 def unet_model_3d(input_shape, pool_size=(2, 2, 2), n_labels=1,
@@ -115,6 +114,7 @@ def unet_model_3d(input_shape, pool_size=(2, 2, 2), n_labels=1,
         optimizer=Adam(lr=initial_learning_rate),
         loss=dice_coefficient_loss, metrics=metrics
         )
+    # TODO: add logging to the tensorboard:
     # log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
     # 1                                                      histogram_freq=1)
@@ -126,7 +126,6 @@ def create_convolution_block(input_layer, n_filters, batch_normalization=False,
                              padding='same', strides=(1, 1, 1),
                              instance_normalization=False):
     """
-
     :param strides:
     :param input_layer:
     :param n_filters:
