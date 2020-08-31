@@ -14,7 +14,7 @@ from nilearn.image import load_img, math_img, new_img_like
 from nipype.interfaces.fsl import BET
 import numpy as np
 import pandas as pd
-from unet3d.utils import find_dirs
+from unet3d.utils.utils import find_dirs
 
 if os.environ.get('DISPLAY'):
     N_JOBS = 1
@@ -531,10 +531,10 @@ def preprocess_image(next_id, path_raw, path_template):
 
 
 if __name__ == "__main__":
-    dataset_name = 'dataset_1'  # also dataset_2, TODO: dataset_healthy
+    dataset_name = 'dataset_2'  # also dataset_2, TODO: dataset_healthy
     # rerun_all: if set to True, all the preprocessed data saved
     # so far will be removed
-    rerun_all = True  # careful !!
+    rerun_all = False  # careful !!
     ext_fig = '.png'
     csv_file = 'subject_info.csv'
 

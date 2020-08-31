@@ -13,9 +13,10 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 
 config = dict()
-config["image_shape"] = (128, 128, 128)  # determines what shape the images
+config["image_shape"] = (256, 256, 256)  # determines what shape the images
 # will be cropped/resampled to
-config["patch_shape"] = None  # switch to None to train on the whole image
+config["patch_shape"] = (128, 128, 128)  # switch to None to train on the
+# whole image
 config["labels"] = (1,)  # the label numbers on the input image, eg (1, 2, 4)
 config["n_base_filters"] = 16
 config["n_labels"] = len(config["labels"])
