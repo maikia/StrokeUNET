@@ -16,23 +16,30 @@ def compute_patch_indices(image_shape, patch_size, overlap, start=None):
 
 
 def get_set_of_patch_indices(start, stop, step):
-    return np.asarray(np.mgrid[start[0]:stop[0]:step[0], start[1]:stop[1]:step[1],
-                               start[2]:stop[2]:step[2]].reshape(3, -1).T, dtype=np.int)
+    return np.asarray(
+        np.mgrid[start[0]:stop[0]:step[0],
+                 start[1]:stop[1]:step[1],
+                 start[2]:stop[2]:step[2]].reshape(3, -1).T, dtype=np.int
+        )
 
 
 def get_random_patch_index(image_shape, patch_shape):
     """
-    Returns a random corner index for a patch. If this is used during training, the middle pixels will be seen by
-    the model way more often than the edge pixels (which is probably a bad thing).
+    Returns a random corner index for a patch. If this is used during training,
+        the middle pixels will be seen by the model way more often than the
+        edge pixels (which is probably a bad thing).
     :param image_shape: Shape of the image
     :param patch_shape: Shape of the patch
-    :return: a tuple containing the corner index which can be used to get a patch from an image
+    :return: a tuple containing the corner index which can be used to get
+        a patch from an image
     """
     return get_random_nd_index(np.subtract(image_shape, patch_shape))
 
 
 def get_random_nd_index(index_max):
-    return tuple([np.random.choice(index_max[index] + 1) for index in range(len(index_max))])
+    return tuple(
+        [np.random.choice(
+            index_max[index] + 1) for index in range(len(index_max))])
 
 
 def get_patch_from_3d_data(data, patch_shape, patch_index):
@@ -46,9 +53,13 @@ def get_patch_from_3d_data(data, patch_shape, patch_index):
     patch_index = np.asarray(patch_index, dtype=np.int16)
     patch_shape = np.asarray(patch_shape)
     image_shape = data.shape[-3:]
-    if np.any(patch_index < 0) or np.any((patch_index + patch_shape) > image_shape):
-        data, patch_index = fix_out_of_bound_patch_attempt(data, patch_shape, patch_index)
-    return data[..., patch_index[0]:patch_index[0]+patch_shape[0], patch_index[1]:patch_index[1]+patch_shape[1],
+    if (np.any(patch_index < 0) or np.any(
+         (patch_index + patch_shape) > image_shape)):
+        data, patch_index = fix_out_of_bound_patch_attempt(
+            data, patch_shape, patch_index)
+    return data[...,
+                patch_index[0]:patch_index[0]+patch_shape[0],
+                patch_index[1]:patch_index[1]+patch_shape[1],
                 patch_index[2]:patch_index[2]+patch_shape[2]]
 
 
@@ -62,23 +73,32 @@ def fix_out_of_bound_patch_attempt(data, patch_shape, patch_index, ndim=3):
     """
     image_shape = data.shape[-ndim:]
     pad_before = np.abs((patch_index < 0) * patch_index)
-    pad_after = np.abs(((patch_index + patch_shape) > image_shape) * ((patch_index + patch_shape) - image_shape))
+    pad_after = np.abs(
+        ((patch_index + patch_shape) > image_shape)
+        * ((patch_index + patch_shape) - image_shape))
     pad_args = np.stack([pad_before, pad_after], axis=1)
     if pad_args.shape[0] < len(data.shape):
-        pad_args = [[0, 0]] * (len(data.shape) - pad_args.shape[0]) + pad_args.tolist()
+        pad_args = [[0, 0]] * \
+                   (len(data.shape) - pad_args.shape[0]) + \
+                   pad_args.tolist()
     data = np.pad(data, pad_args, mode="edge")
     patch_index += pad_before
     return data, patch_index
 
 
-def reconstruct_from_patches(patches, patch_indices, data_shape, default_value=0):
+def reconstruct_from_patches(patches, patch_indices, data_shape,
+                             default_value=0):
     """
-    Reconstructs an array of the original shape from the lists of patches and corresponding patch indices. Overlapping
+    Reconstructs an array of the original shape from the lists of patches and
+        corresponding patch indices. Overlapping
     patches are averaged.
     :param patches: List of numpy array patches.
-    :param patch_indices: List of indices that corresponds to the list of patches.
-    :param data_shape: Shape of the array from which the patches were extracted.
-    :param default_value: The default value of the resulting data. if the patch coverage is complete, this value will
+    :param patch_indices: List of indices that corresponds to the list of
+        patches.
+    :param data_shape: Shape of the array from which the patches were
+        extracted.
+    :param default_value: The default value of the resulting data. if the patch
+        coverage is complete, this value will
     be overwritten.
     :return: numpy array containing the data reconstructed by the patches.
     """
@@ -92,8 +112,11 @@ def reconstruct_from_patches(patches, patch_indices, data_shape, default_value=0
             patch = patch[..., fix_patch[0]:, fix_patch[1]:, fix_patch[2]:]
             index[index < 0] = 0
         if np.any((index + image_patch_shape) >= image_shape):
-            fix_patch = np.asarray(image_patch_shape - (((index + image_patch_shape) >= image_shape)
-                                                        * ((index + image_patch_shape) - image_shape)), dtype=np.int)
+            fix_patch = np.asarray(
+                image_patch_shape - (
+                    ((index + image_patch_shape) >= image_shape)
+                    * ((index + image_patch_shape) - image_shape)
+                    ), dtype=np.int)
             patch = patch[..., :fix_patch[0], :fix_patch[1], :fix_patch[2]]
         patch_index = np.zeros(data_shape, dtype=np.bool)
         patch_index[...,
@@ -108,6 +131,10 @@ def reconstruct_from_patches(patches, patch_indices, data_shape, default_value=0
 
         averaged_data_index = np.logical_and(patch_index, count > 0)
         if np.any(averaged_data_index):
-            data[averaged_data_index] = (data[averaged_data_index] * count[averaged_data_index] + patch_data[averaged_data_index]) / (count[averaged_data_index] + 1)
+            data[averaged_data_index] = (
+                data[averaged_data_index]
+                * count[averaged_data_index]
+                + patch_data[averaged_data_index]
+                ) / (count[averaged_data_index] + 1)
         count[patch_index] += 1
     return data
