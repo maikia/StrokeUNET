@@ -84,13 +84,13 @@ def plot_dice_coeff_score(df_scores, prediction_dir, ext):
 
 
 def plot_for_subject(prediction_dir, subject_dir, depth_idx=70,
-                     filname_t1='data_no_skull_norm_t1.nii.gz',
+                     filename_t1='data_no_skull_norm_t1.nii.gz',
                      filename_truth='truth.nii.gz',
                      filename_predict='prediction.nii.gz', ext='.png'):
     plt.figure()
 
     val_dir = os.path.join(prediction_dir, subject_dir)
-    path_t1 = os.path.join(val_dir, filname_t1)
+    path_t1 = os.path.join(val_dir, filename_t1)
     path_true = os.path.join(val_dir, filename_truth)
     path_predict = os.path.join(val_dir, filename_predict)
     brain_img = load_img(path_t1).get_fdata()
@@ -102,12 +102,19 @@ def plot_for_subject(prediction_dir, subject_dir, depth_idx=70,
                              subject_dir+'_mask_example' + ext))
 
 
-def plot_for_all_subjects(prediction_dir, depth_idx=70):
+def plot_for_all_subjects(prediction_dir, depth_idx=70,
+                          filename_t1='data_no_skull_norm_t1.nii.gz',
+                          filename_truth='truth.nii.gz',
+                          filename_predict='prediction.nii.gz', ext='.png'):
     # get all the validation dirs
     dir_iterator = next(os.walk(prediction_dir))[1]
 
     for idx, subject_dir in enumerate(dir_iterator):
-        plot_for_subject(prediction_dir, subject_dir, depth_idx=depth_idx)
+        plot_for_subject(prediction_dir, subject_dir, depth_idx=depth_idx,
+                         ext=ext,
+                         filename_t1=filename_t1,
+                         filename_truth=filename_truth,
+                         filename_predict=filename_predict)
     print(f'saved result plots for {idx+1} subjects')
 
 
@@ -117,13 +124,20 @@ def _make_new_folder(new_dir):
 
 
 if __name__ == "__main__":
-    prediction_dir = 'prediction'
+    prediction_dir = 'prediction_126_cut_size'
     ext = '.png'
+    filename_t1 = 'data_no_skull_norm_t1.nii.gz'
+    filename_truth = 'truth.nii.gz'
+    filename_predict = 'prediction.nii.gz'
+
     # plot image
     df = pd.read_csv(os.path.join(prediction_dir, 'brats_scores.csv'))
-    plot_dice_coeff_score_hist(df, prediction_dir, ext)
-    plot_dice_coeff_score(df, prediction_dir, ext)
-    plot_for_all_subjects(prediction_dir)
+    plot_dice_coeff_score_hist(df, prediction_dir, ext=ext)
+    plot_dice_coeff_score(df, prediction_dir, ext=ext)
+    plot_for_all_subjects(prediction_dir, ext=ext,
+                          filename_t1=filename_t1,
+                          filename_truth=filename_truth,
+                          filename_predict=filename_predict)
 
     # make a movie
     ani_frame(prediction_dir, validation_dir='subject_16')
