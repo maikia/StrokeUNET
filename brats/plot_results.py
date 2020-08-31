@@ -14,7 +14,7 @@ def draw_image_masks(brain_img, true_mask, predicted_mask):
     my_cmap_true = cm.PiYG
     my_cmap_true.set_under('k', alpha=0)
 
-    plt.subplot(1, 1, 1)
+    # plt.subplot(1, 1, 1)
     plt.imshow(brain_img, cmap='Greys')  # , alpha = 0.5)
     plt.imshow(predicted_mask, cmap=my_cmap_predict,
                interpolation='none',
@@ -140,7 +140,7 @@ if __name__ == "__main__":
                           filename_predict=filename_predict)
 
     # make a movie
-    ani_frame(prediction_dir, validation_dir='subject_16')
+    ani_frame(prediction_dir, validation_dir='subject_224')
 
     print('saved images in dir: ', prediction_dir)
 
