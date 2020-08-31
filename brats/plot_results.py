@@ -7,53 +7,6 @@ import os as os
 import pandas as pd
 
 
-def draw_all_images(prediction_dir, brain_depth=72,
-                    filname_t1='data_no_skull_norm_t1.nii.gz',
-                    filename_truth='truth.nii.gz',
-                    filename_predict='prediction.nii.gz', ext='.png'):
-    """
-    prediction_dir:
-    brain_depth: at which pxl depth the image of the brain will be drawn
-    """
-    # get all the validation dirs
-    dir_iterator = next(os.walk(prediction_dir))[1]
-    my_cmap_predict = cm.jet
-    my_cmap_predict.set_under('k', alpha=0)
-    my_cmap_true = cm.PiYG
-    my_cmap_true.set_under('k', alpha=0)
-
-    for val_dir in dir_iterator:
-        path_img_save = os.path.join(prediction_dir, val_dir)
-
-        path_t1 = os.path.join(val_dir, filname_t1)
-        path_true = os.path.join(val_dir, filename_truth)
-        # path_predict = os.path.join(val_dir, filename_predict)
-
-        # save image
-        brain_img = load_img(path_t1).get_data()[:, :, brain_depth]
-        validation_case = val_dir.split("_")[-1]
-
-        # brain image
-        plt.figure()
-        plt.subplot(1, 1, 1)
-        plt.imshow(brain_img, cmap='Greys')
-        plt.title('validation_case: ' + validation_case)
-        brain_name = os.path.join(path_img_save, 'the_brain'+ext)
-        plt.savefig(brain_name)
-
-        # brain image with mask
-        mask_image = load_img(path_true).get_data()
-        mask_at_depth = mask_image[:, :, brain_depth]
-        plt.imshow(mask_at_depth, cmap=my_cmap_true,
-                   interpolation='none',
-                   clim=[0.9, 1], alpha=0.5)
-        plt.title('lesion size: ' + validation_case)
-        truth_name = os.path.join(path_img_save, 'truth_on_brain'+ext)
-        plt.savefig(truth_name)
-
-        plt.close("all")
-
-
 # plot exemplar prediction set
 def draw_image_masks(brain_img, true_mask, predicted_mask):
     my_cmap_predict = cm.jet
@@ -72,7 +25,7 @@ def draw_image_masks(brain_img, true_mask, predicted_mask):
 
 
 # make a movie
-def ani_frame(prediction_dir, validation_dir='validation_case_365'):
+def ani_frame(prediction_dir, validation_dir='subject_16'):
     dpi = 100
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -86,12 +39,12 @@ def ani_frame(prediction_dir, validation_dir='validation_case_365'):
     fig.set_size_inches([5, 5])
 
     val_dir = os.path.join(prediction_dir, validation_dir)
-    path_t1 = os.path.join(val_dir, 'data_t1.nii.gz')
+    path_t1 = os.path.join(val_dir, 'data_no_skull_norm_t1.nii.gz')
     path_true = os.path.join(val_dir, 'truth.nii.gz')
     path_predict = os.path.join(val_dir, 'prediction.nii.gz')
-    brain_img = load_img(path_t1).get_data()
-    true_mask = load_img(path_true).get_data()
-    predicted_mask = load_img(path_predict).get_data()
+    brain_img = load_img(path_t1).get_fdata()
+    true_mask = load_img(path_true).get_fdata()
+    predicted_mask = load_img(path_predict).get_fdata()
 
     plt.tight_layout()
 
@@ -102,13 +55,14 @@ def ani_frame(prediction_dir, validation_dir='validation_case_365'):
         plt.title('green: true, red: predict')
         return im
 
-    # legend(loc=0)
-    ani = animation.FuncAnimation(fig, update_img, range(0, 144, 3),
-                                  interval=20)  # 300,interval=30)
-    writer = animation.writers['ffmpeg'](fps=30)
+    ani = animation.FuncAnimation(fig, update_img, range(0, 128, 3))
+    # interval=20)
+    writer = animation.writers['ffmpeg'](fps=5)  # fps: frames per second
 
     movie_path = os.path.join(prediction_dir, validation_dir+'.mp4')
     ani.save(movie_path, writer=writer, dpi=dpi)
+
+    plt.close('all')
     print('wrote a movie in:', movie_path)
     return ani
 
@@ -139,9 +93,9 @@ def plot_for_subject(prediction_dir, subject_dir, depth_idx=70,
     path_t1 = os.path.join(val_dir, filname_t1)
     path_true = os.path.join(val_dir, filename_truth)
     path_predict = os.path.join(val_dir, filename_predict)
-    brain_img = load_img(path_t1).get_data()
-    true_mask = load_img(path_true).get_data()
-    predicted_mask = load_img(path_predict).get_data()
+    brain_img = load_img(path_t1).get_fdata()
+    true_mask = load_img(path_true).get_fdata()
+    predicted_mask = load_img(path_predict).get_fdata()
     draw_image_masks(brain_img[:, :, depth_idx], true_mask[:, :, depth_idx],
                      predicted_mask[:, :, depth_idx])
     plt.savefig(os.path.join(prediction_dir,
@@ -167,9 +121,7 @@ if __name__ == "__main__":
     plot_for_all_subjects(prediction_dir)
 
     # make a movie
-    # ani_frame(prediction_dir=prediction_dir, validation_dir=validation_dir)
-
-    # draw_all_images(prediction_dir, brain_depth=100, ext='.png')
+    ani_frame(prediction_dir, validation_dir='subject_16')
 
     print('saved images in dir: ', prediction_dir)
 
