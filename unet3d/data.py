@@ -1,6 +1,5 @@
 import os
 
-import matplotlib.pyplot as plt
 import numpy as np
 import tables
 
@@ -35,8 +34,7 @@ def write_image_data_to_file(image_files, data_storage, truth_storage,
                              image_shape, n_channels, affine_storage,
                              truth_dtype=np.uint8, crop=True,
                              label_indices=None, save_truth=True):
-    # TODO: what does crop=True?
-    #
+    ''' takes all the scans and saves them into h5 file'''
     for set_of_files in image_files:
 
         if label_indices is None:
@@ -50,48 +48,6 @@ def write_image_data_to_file(image_files, data_storage, truth_storage,
                             subject_data, images[0].affine, n_channels,
                             truth_dtype, save_truth=save_truth)
     return data_storage, truth_storage
-    '''
-    # it will save all of the assigned indices and the corresponding paths
-    # of the files
-
-    rows = list()
-    header = ("t1_path", "truth_path", "idx_ref", "is_train")
-
-    # if later overwrite is set and the new training and validation set will
-    # be chosen
-    # the mean of training images will be wrongly calculated
-    # training_file = os.path.abspath("training_ids.pkl")
-    # validation_file = os.path.abspath("validation_ids.pkl")
-    # try:
-    training_list = pickle_load(os.path.abspath("training_ids.pkl"))
-    # careful, normally not hardcoded
-    # except:
-    #    import pdb
-    #    pdb.set_trace()
-
-    for idx, set_of_files in enumerate(image_files):
-        # create reference .csv file
-        if idx in training_list:
-            # set True if training, False if validation
-            is_train = True
-        else:
-            is_train = False
-
-        rows.append([set_of_files[0], set_of_files[1], idx, is_train])
-
-        images = reslice_image_set(set_of_files, image_shape,
-                                   label_indices=len(set_of_files) - 1,
-                                   crop=crop)
-        subject_data = [image.get_data() for image in images]
-        add_data_to_storage(data_storage, truth_storage, affine_storage,
-                            subject_data, images[0].affine, n_channels,
-                            truth_dtype)
-
-    df = pd.DataFrame.from_records(rows, columns=header)  # ,index=subject_ids)
-    df.to_csv(r'data/.csv')
-    print('wrote to file: data/File_index.csv')
-    return data_storage, truth_storage
-    '''
 
 
 def add_data_to_storage(data_storage, truth_storage, affine_storage,
@@ -138,7 +94,7 @@ def write_data_to_file(training_data_files, out_file, image_shape,
     # true lesion images
 
     try:
-        # 1. initiates .h5 file
+        # initiates .h5 file
         hdf5_file, data_storage, truth_storage, affine_storage = \
             create_data_file(out_file,
                              n_channels=n_channels,
@@ -160,59 +116,11 @@ def write_data_to_file(training_data_files, out_file, image_shape,
     if subject_ids:
         hdf5_file.create_array(hdf5_file.root, 'subject_ids', obj=subject_ids)
     if normalize:
-        # TODO: choose existing index
-        idx1, idx2 = 50, 120
-        ext = '.png'
-        imgs_dir = '../brats/imgs'
-        if not os.path.exists(imgs_dir):
-            os.makedirs(imgs_dir)
-
-        plot_from_data_storage(data_storage, title='before_norm', idx=idx1,
-                               ext=ext, imgs_dir=imgs_dir)
-        plot_from_data_storage(data_storage, title='before_norm', idx=idx2,
-                               ext=ext, imgs_dir=imgs_dir)
-
         # normalization done in the original code
         normalize_data_storage(data_storage)
-        print('1, max, min of mean: ', str(np.max(data_storage)),
-              str(np.min(data_storage)))
-        plot_from_data_storage(data_storage, title='after_norm1', idx=idx1,
-                               ext=ext, imgs_dir=imgs_dir)
-        plot_from_data_storage(data_storage, title='after_norm1', idx=idx2,
-                               ext=ext, imgs_dir=imgs_dir)
-
-        '''
-        # normalization by the training datas mean and
-        normalize_data_by_train(data_storage)
-        print('2, max, min of mean: ', str(np.max(data_storage)),
-              str(np.min(data_storage)))
-        plot_from_data_storage(data_storage, title='after_norm2', idx=idx1,
-                                ext=ext, imgs_dir=imgs_dir)
-        plot_from_data_storage(data_storage, title='after_norm2', idx=idx2,
-                                ext=ext, imgs_dir=imgs_dir)
-        plot_from_data_storage(truth_storage, title='mask', idx=idx1,
-                                ext=ext, imgs_dir=imgs_dir)
-        plot_from_data_storage(truth_storage, title='mask', idx=idx2,
-                                ext=ext, imgs_dir=imgs_dir)
-        '''
-        plt.close('all')
 
     hdf5_file.close()
     return out_file
-
-
-# this function should not be here
-def plot_from_data_storage(data_storage, title, idx, ext='png',
-                           imgs_dir='../brats/imgs'):
-    if data_storage.shape[0] > idx:
-        plt.imshow(data_storage[idx, 0, :, :, 70])
-        file_name = title+'_idx'+str(idx)+ext
-        file_path = os.path.join(imgs_dir, file_name)
-        plt.savefig(file_path)
-    else:
-        # TODO: only temporary. could raise warning or change to existing idx
-        print(f'size of the data is {data_storage.shape}. {idx} idx does not'
-              ' exist')
 
 
 def open_data_file(filename, readwrite="r"):

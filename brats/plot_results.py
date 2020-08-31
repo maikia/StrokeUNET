@@ -111,6 +111,11 @@ def plot_for_all_subjects(prediction_dir, depth_idx=70):
     print(f'saved result plots for {idx+1} subjects')
 
 
+def _make_new_folder(new_dir):
+    if not os.path.exists(new_dir):
+        os.makedirs(new_dir)
+
+
 if __name__ == "__main__":
     prediction_dir = 'prediction'
     ext = '.png'
