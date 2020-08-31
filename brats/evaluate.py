@@ -1,11 +1,12 @@
-import numpy as np
-import nibabel as nib
-import os
 import glob
-import pandas as pd
 import matplotlib
-matplotlib.use('agg')
 import matplotlib.pyplot as plt
+import nibabel as nib
+import numpy as np
+import os
+import pandas as pd
+
+matplotlib.use('agg')
 
 
 def get_whole_tumor_mask(data):
@@ -31,9 +32,8 @@ def dice_coefficient(truth, prediction):
 
 
 def main():
-    #header = ("WholeTumor", "TumorCore", "EnhancingTumor")
     header = ("DiceCoeff", "TruthSize", "PredictSize")
-    #masking_functions = (get_whole_tumor_mask, get_tumor_core_mask, get_enhancing_tumor_mask)
+
     rows = list()
     subject_ids = list()
     for case_folder in glob.glob("prediction/*"):
@@ -47,9 +47,9 @@ def main():
         prediction_image = nib.load(prediction_file)
         prediction = prediction_image.get_data()
         truth[truth > 0] = 1
-        #rows.append([dice_coefficient(func(truth), func(prediction))for func in masking_functions])
-        rows.append([dice_coefficient(get_whole_tumor_mask(truth), 
-                get_whole_tumor_mask(prediction)), np.sum(truth), np.sum(prediction)])
+        rows.append([dice_coefficient(get_whole_tumor_mask(truth),
+                    get_whole_tumor_mask(prediction)),
+                    np.sum(truth), np.sum(prediction)])
 
     df = pd.DataFrame.from_records(rows, columns=header, index=subject_ids)
     df.to_csv("./prediction/brats_scores.csv")
@@ -57,7 +57,7 @@ def main():
     scores = dict()
     for index, score in enumerate(df.columns):
         values = df.values.T[index]
-        scores[score] = values[np.isnan(values) == False]
+        scores[score] = values[not np.isnan(values)]
     plt.figure()
     plt.boxplot(list(scores.values()), labels=list(scores.keys()))
     plt.ylabel("Dice Coefficient")
