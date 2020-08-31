@@ -5,10 +5,6 @@ from nilearn.image import load_img
 import numpy as np
 import os as os
 import pandas as pd
-from pandas.plotting import scatter_matrix
-
-PREDICTION_DIR = 'prediction'
-EXT = '.png'
 
 
 def draw_all_images(prediction_dir, brain_depth=72,
@@ -117,47 +113,64 @@ def ani_frame(prediction_dir, validation_dir='validation_case_365'):
     return ani
 
 
-if __name__ == "__main__":
-    df = pd.read_csv(os.path.join(PREDICTION_DIR, 'brats_scores.csv'))
-
+def plot_dice_coeff_score_hist(df_scores, prediction_dir, ext):
     plt.figure()
-    df['DiceCoeff'].hist()
+    df_scores['DiceCoeff'].hist()
     plt.title('Dice score for stroke data')
-    plt.savefig(os.path.join(PREDICTION_DIR, 'dice_coef_hist' + EXT))
+    plt.savefig(os.path.join(prediction_dir, 'dice_coef_hist' + ext))
 
-    # plot image
+
+def plot_dice_coeff_score(df_scores, prediction_dir, ext):
     plt.figure(figsize=(10, 20))
 
-    df_sort = df.sort_values(by=['DiceCoeff'])
-
+    df_sort = df_scores.sort_values(by=['DiceCoeff'])
     plt.plot(df_sort['DiceCoeff'], df_sort['Unnamed: 0'], "o", ms=6)
     plt.title('Dice validation')
-    plt.savefig(os.path.join(PREDICTION_DIR, 'dice_validation' + EXT))
+    plt.savefig(os.path.join(prediction_dir, 'dice_validation' + ext))
 
-    if len(np.unique(df_sort['PredictSize'])) > 1:
-        scatter_matrix(df_sort, alpha=0.5, figsize=(6, 6), diagonal='kde')
-        plt.savefig(os.path.join(PREDICTION_DIR, 'scatter_matrix' + EXT))
 
+def plot_for_subject(prediction_dir, subject_dir, depth_idx=70,
+                     filname_t1='data_no_skull_norm_t1.nii.gz',
+                     filename_truth='truth.nii.gz',
+                     filename_predict='prediction.nii.gz', ext='.png'):
     plt.figure()
-    validation_dir = 'subject_19'
-    idx = 70
 
-    val_dir = os.path.join(PREDICTION_DIR, validation_dir)
-    path_t1 = os.path.join(val_dir, 'data_no_skull_norm_t1.nii.gz')
-    path_true = os.path.join(val_dir, 'truth.nii.gz')
-    path_predict = os.path.join(val_dir, 'prediction.nii.gz')
+    val_dir = os.path.join(prediction_dir, subject_dir)
+    path_t1 = os.path.join(val_dir, filname_t1)
+    path_true = os.path.join(val_dir, filename_truth)
+    path_predict = os.path.join(val_dir, filename_predict)
     brain_img = load_img(path_t1).get_data()
     true_mask = load_img(path_true).get_data()
     predicted_mask = load_img(path_predict).get_data()
-    draw_image_masks(brain_img[:, :, idx], true_mask[:, :, idx],
-                     predicted_mask[:, :, idx])
-    plt.savefig(os.path.join(PREDICTION_DIR,
-                             validation_dir+'_mask_example' + EXT))
+    draw_image_masks(brain_img[:, :, depth_idx], true_mask[:, :, depth_idx],
+                     predicted_mask[:, :, depth_idx])
+    plt.savefig(os.path.join(prediction_dir,
+                             subject_dir+'_mask_example' + ext))
+
+
+def plot_for_all_subjects(prediction_dir, depth_idx=70):
+    # get all the validation dirs
+    dir_iterator = next(os.walk(prediction_dir))[1]
+
+    for idx, subject_dir in enumerate(dir_iterator):
+        plot_for_subject(prediction_dir, subject_dir, depth_idx=depth_idx)
+    print(f'saved result plots for {idx+1} subjects')
+
+
+if __name__ == "__main__":
+    prediction_dir = 'prediction'
+    ext = '.png'
+    # plot image
+    df = pd.read_csv(os.path.join(prediction_dir, 'brats_scores.csv'))
+    plot_dice_coeff_score_hist(df, prediction_dir, ext)
+    plot_dice_coeff_score(df, prediction_dir, ext)
+    plot_for_all_subjects(prediction_dir)
+
     # make a movie
     # ani_frame(prediction_dir=prediction_dir, validation_dir=validation_dir)
 
     # draw_all_images(prediction_dir, brain_depth=100, ext='.png')
 
-    print('saved images in dir: ', PREDICTION_DIR)
+    print('saved images in dir: ', prediction_dir)
 
     plt.show()
