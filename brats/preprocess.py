@@ -46,9 +46,8 @@ def apply_mask_to_image(mask, img):
         return 1, masked
     else:
         # there is a shape mismatch between the T1 and mask
-        import pdb; pdb.set_trace()
         err_msg = (f'Shape mismatch between T1: {img.shape} and'
-                   f'the mask: {mask.shape}')
+                   f' the mask: {mask.shape}')
         return 0, err_msg
 
 
@@ -413,19 +412,21 @@ def bias_field_correction(t1_in):
 
 
 def plot_t1(path_t1, title, fig_dir, fig_file):
+    use_cmap = plt.cm.get_cmap('Blues').reversed()
     plotting.plot_stat_map(path_t1, title=title,
                            display_mode='ortho', dim=-1,
                            draw_cross=False, annotate=False, bg_img=None,
-                           cmap='Greys'.reversed(),
+                           cmap=use_cmap,
                            cut_coords=(0, 0, 0))
     plt.savefig(os.path.join(fig_dir, fig_file))
 
 
 def plot_mask(path_mask, title, fig_dir, fig_file):
+    use_cmap = plt.cm.get_cmap('autumn').reversed()
     plotting.plot_stat_map(path_mask, title=title,
                            display_mode='ortho', dim=-1,
                            draw_cross=False, annotate=False, bg_img=None,
-                           cmap='autumn'.reversed(),
+                           cmap=use_cmap,
                            cut_coords=[0, 0, 0])
     plt.savefig(os.path.join(fig_dir, fig_file))
 
@@ -482,7 +483,7 @@ def preprocess_image(next_id, path_raw, path_template, subj_info_file):
     ok, no_skull_lesion_img = apply_mask_to_image(mask_img, lesion_img)
     if not ok:
         # something went wrong
-        next_subj['Error'] = lesion_img
+        next_subj['Error'] = no_skull_lesion_img
         save_to_csv(subj_info_file, next_subj, next_id)
         return next_subj
 
