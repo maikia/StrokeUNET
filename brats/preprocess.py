@@ -38,12 +38,18 @@ def apply_mask_to_image(mask, img):
     masked
         img masked with a mask
     """
-    assert mask.shape == img.shape
-    img_data = img.get_fdata()
-    mask_data = mask.get_fdata()
-    img_data[mask_data == 0] = 0
-    masked = new_img_like(img, img_data, affine=None, copy_header=False)
-    return masked
+    if mask.shape == img.shape:
+        img_data = img.get_fdata()
+        mask_data = mask.get_fdata()
+        img_data[mask_data == 0] = 0
+        masked = new_img_like(img, img_data, affine=None, copy_header=False)
+        return 1, masked
+    else:
+        # there is a shape mismatch between the T1 and mask
+        import pdb; pdb.set_trace()
+        err_msg = (f'Shape mismatch between T1: {img.shape} and'
+                   f'the mask: {mask.shape}')
+        return 0, err_msg
 
 
 def strip_skull_mask(t1_file_in, t1_file_out, mask_file_out, frac=0.3):
@@ -410,7 +416,7 @@ def plot_t1(path_t1, title, fig_dir, fig_file):
     plotting.plot_stat_map(path_t1, title=title,
                            display_mode='ortho', dim=-1,
                            draw_cross=False, annotate=False, bg_img=None,
-                           cmap='Greys_r',
+                           cmap='Greys'.reversed(),
                            cut_coords=(0, 0, 0))
     plt.savefig(os.path.join(fig_dir, fig_file))
 
@@ -419,7 +425,7 @@ def plot_mask(path_mask, title, fig_dir, fig_file):
     plotting.plot_stat_map(path_mask, title=title,
                            display_mode='ortho', dim=-1,
                            draw_cross=False, annotate=False, bg_img=None,
-                           cmap='autumn_r',
+                           cmap='autumn'.reversed(),
                            cut_coords=[0, 0, 0])
     plt.savefig(os.path.join(fig_dir, fig_file))
 
@@ -473,7 +479,12 @@ def preprocess_image(next_id, path_raw, path_template, subj_info_file):
 
     no_skull_t1_img, mask_img = strip_skull_mask(
         t1_file, t1_no_skull_file, mask_no_skull_file)
-    no_skull_lesion_img = apply_mask_to_image(mask_img, lesion_img)
+    ok, no_skull_lesion_img = apply_mask_to_image(mask_img, lesion_img)
+    if not ok:
+        # something went wrong
+        next_subj['Error'] = lesion_img
+        save_to_csv(subj_info_file, next_subj, next_id)
+        return next_subj
 
     no_skull_lesion_file = os.path.join(path_results,
                                         'no_skull_lesion.nii.gz')
@@ -555,6 +566,7 @@ def preprocess_image(next_id, path_raw, path_template, subj_info_file):
 def save_to_csv(subj_info_file, next_subj, next_id):
     df = pd.DataFrame(next_subj, index=[next_id])
     df.to_csv(subj_info_file, mode='a', header=False)
+
 
 if __name__ == "__main__":
     dataset_name = 'dataset_3'  # also dataset_2, TODO: dataset_healthy
