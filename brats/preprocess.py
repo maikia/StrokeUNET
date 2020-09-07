@@ -117,19 +117,23 @@ def combine_lesions(path, lesion_str='Lesion'):
             lesion_data = lesion_img.get_fdata()
             if n_lesions == 0:
                 lesion = lesion_data
-            else:
+            elif np.shape(lesion) != np.shape(lesion_data):
+                # the shapes of the T1 and mask are not the same
+                error_string = (f'shape mismatch: {np.shape(lesion)} vs'
+                                f'{np.shape(lesion_data)}')
+                return 0, error_string
                 lesion += lesion_data
             n_lesions += 1
     if n_lesions > 0:
         lesion[lesion > 0] = 1
         masked = new_img_like(lesion_img, lesion,
                               affine=None, copy_header=False)
-        return masked
+        return 1, masked
     else:
         # there are no lesions found
         warnings.warn('there are no lesion files with name including '
                       f'{lesion_str} found in the {path}.')
-        return 0
+        return 0, 'no lesions found'
 
 
 def find_file(path, include_str='t1', exclude_str='lesion'):
@@ -427,7 +431,7 @@ def plot_overlay(path_mask, path_bg, title, fig_dir, fig_file):
     plt.savefig(os.path.join(fig_dir, fig_file))
 
 
-def preprocess_image(next_id, path_raw, path_template):
+def preprocess_image(next_id, path_raw, path_template, subj_info_file):
     print(f'subject {next_id}, working on {path_raw}')
     path_results = os.path.join(results_dir, f'subject_{next_id}')
     path_figs = os.path.join(path_results, 'figs')
@@ -446,7 +450,13 @@ def preprocess_image(next_id, path_raw, path_template):
     # check if multiple lesion files are saved
     # combines them and sets to 0 or 1
     print(f's{next_id}: combining lesions and setting them to 0s and 1s')
-    lesion_img = combine_lesions(path_raw, lesion_str=data['lesion_str'])
+    ok, lesion_img = combine_lesions(path_raw, lesion_str=data['lesion_str'])
+    if not ok:
+        # something went wrong
+        next_subj['Error'] = lesion_img
+        save_to_csv(subj_info_file, next_subj, next_id)
+        return next_subj
+
     next_subj['RawLesionSize'] = int(np.sum(lesion_img.get_fdata()))
     next_subj['RawSize_x'], next_subj['RawSize_y'], \
         next_subj['RawSize_z'] = lesion_img.shape
@@ -537,11 +547,17 @@ def preprocess_image(next_id, path_raw, path_template):
 
     next_subj['NewSize_x'], next_subj['NewSize_y'], \
         next_subj['NewSize_z'] = no_skull_norm_lesion_data.shape
+
+    save_to_csv(subj_info_file, next_subj, next_id)
     return next_subj
 
 
+def save_to_csv(subj_info_file, next_subj, next_id):
+    df = pd.DataFrame(next_subj, index=[next_id])
+    df.to_csv(subj_info_file, mode='a', header=False)
+
 if __name__ == "__main__":
-    dataset_name = 'dataset_2'  # also dataset_2, TODO: dataset_healthy
+    dataset_name = 'dataset_3'  # also dataset_2, TODO: dataset_healthy
     # rerun_all: if set to True, all the preprocessed data saved
     # so far will be removed
     rerun_all = False  # careful !!
@@ -552,7 +568,7 @@ if __name__ == "__main__":
     column_names = ['RawPath', 'ProcessedPath', 'NewID',
                     'RawSize_x', 'RawSize_y', 'RawSize_z',
                     'NewSize_x', 'NewSize_y', 'NewSize_z',
-                    'RawLesionSize', 'NewLesionSize']
+                    'RawLesionSize', 'NewLesionSize', 'Error']
     results_dir = 'data/preprocessed/'
 
     # find mni templates at:
@@ -592,13 +608,11 @@ if __name__ == "__main__":
     path_list = [path for path in path_list if path not in raw_paths_stored]
 
     print(f'begining to analyze {n_dirs} patient directories')
+    subj_info_file = os.path.join(results_dir, csv_file)
     dict_result = Parallel(n_jobs=N_JOBS)(
         delayed(preprocess_image)(
-            next_id+idx, path_raw, template_brain_no_skull)
+            next_id+idx, path_raw, template_brain_no_skull, subj_info_file)
         for idx, path_raw in enumerate(path_list)
     )
 
-    df = pd.DataFrame(dict_result,
-                      index=range(next_id, len(dict_result)+next_id))
-    df.to_csv(os.path.join(results_dir, csv_file), mode='a', header=False)
     print(f'saved results from {len(dict_result)} patient directories')
