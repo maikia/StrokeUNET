@@ -341,17 +341,27 @@ def read_dataset(name):
     if name == dataset2['name']:
         return dataset2
 
+    dataset3 = {
+        "name": 'dataset_3',
+        "raw_dir": '../../data/20200901/',
+        "lesion_str": 'lesion',
+        "t1_inc_str": 'T1',
+        "t1_exc_str": 'lesion'
+    }
+    if name == dataset3['name']:
+        return dataset3
+
     # third dataset (healthy patinets)
     # here all the scans are in the single directory
-    dataset3 = {
+    dataset_healthy = {
         "name": 'dataset_healthy',
         "raw_dir": '../../data/healthy/',
         "lesion_str": 'lesion',
         "t1_inc_str": 'T1',
         "t1_exc_str": 'label'
     }
-    if name == dataset3['name']:
-        return dataset3
+    if name == dataset_healthy['name']:
+        return dataset_healthy
     return None
 
 
