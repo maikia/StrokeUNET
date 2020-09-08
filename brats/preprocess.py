@@ -9,6 +9,7 @@ import warnings
 
 from joblib import Memory, Parallel, delayed
 import matplotlib.pylab as plt
+from nibabel.filebasedimages import ImageFileError
 from nilearn import plotting
 from nilearn.image import load_img, math_img, new_img_like
 from nipype.interfaces.fsl import BET
@@ -20,7 +21,7 @@ if os.environ.get('DISPLAY'):
     N_JOBS = 1
 else:
     # running on the server
-    N_JOBS = -1
+    N_JOBS = 1
 
 mem = Memory('./')
 
@@ -118,15 +119,22 @@ def combine_lesions(path, lesion_str='Lesion'):
     for file_name in os.listdir(path):
         if lesion_str in file_name:
             # is lesion
-            lesion_img = load_img(os.path.join(path, file_name))
-            lesion_data = lesion_img.get_fdata()
+            path_img = os.path.join(path, file_name)
+            try:
+                lesion_img = load_img(path_img)
+            except ImageFileError as e:
+                err_msg = (f"Problem understanding {path_img} file."
+                           f" Error: {str(e)}")
+                return 0, err_msg
+            else:
+                lesion_data = lesion_img.get_fdata()
             if n_lesions == 0:
                 lesion = lesion_data
             elif np.shape(lesion) != np.shape(lesion_data):
                 # the shapes of the T1 and mask are not the same
-                error_string = (f'shape mismatch: {np.shape(lesion)} vs'
-                                f'{np.shape(lesion_data)}')
-                return 0, error_string
+                err_msg = (f'shape mismatch: {np.shape(lesion)} vs'
+                           f'{np.shape(lesion_data)}')
+                return 0, err_msg
                 lesion += lesion_data
             n_lesions += 1
     if n_lesions > 0:
@@ -413,12 +421,18 @@ def bias_field_correction(t1_in):
 
 def plot_t1(path_t1, title, fig_dir, fig_file):
     use_cmap = plt.cm.get_cmap('Blues').reversed()
-    plotting.plot_stat_map(path_t1, title=title,
-                           display_mode='ortho', dim=-1,
-                           draw_cross=False, annotate=False, bg_img=None,
-                           cmap=use_cmap,
-                           cut_coords=(0, 0, 0))
-    plt.savefig(os.path.join(fig_dir, fig_file))
+    try:
+        plotting.plot_stat_map(path_t1, title=title,
+                               display_mode='ortho', dim=-1,
+                               draw_cross=False, annotate=False, bg_img=None,
+                               cmap=use_cmap,
+                               cut_coords=(0, 0, 0))
+    except ImageFileError as e:
+        err_msg = f"Problem understanding {path_t1} file. Error: {str(e)}"
+        return 0, err_msg
+    else:
+        plt.savefig(os.path.join(fig_dir, fig_file))
+        return 1, None
 
 
 def plot_mask(path_mask, title, fig_dir, fig_file):
@@ -432,10 +446,17 @@ def plot_mask(path_mask, title, fig_dir, fig_file):
 
 
 def plot_overlay(path_mask, path_bg, title, fig_dir, fig_file):
-    plotting.plot_roi(path_mask, bg_img=path_bg, title=title,
-                      draw_cross=False, cmap='autumn',
-                      cut_coords=[0, 0, 0])
-    plt.savefig(os.path.join(fig_dir, fig_file))
+    try:
+        plotting.plot_roi(path_mask, bg_img=path_bg, title=title,
+                          draw_cross=False, cmap='autumn',
+                          cut_coords=[0, 0, 0])
+    except ImageFileError as e:
+        err_msg = (f"Problem understanding {path_mask} or {path_bg} file."
+                   f" Error: {str(e)}")
+        return 0, err_msg
+    else:
+        plt.savefig(os.path.join(fig_dir, fig_file))
+        return 1, None
 
 
 def preprocess_image(next_id, path_raw, path_template, subj_info_file):
@@ -516,26 +537,48 @@ def preprocess_image(next_id, path_raw, path_template, subj_info_file):
     # 5. Plot the results
     print(f's{next_id}: plotting and saving figs')
 
-    plot_t1(template_brain, title='template',
-            fig_dir=path_figs, fig_file='0_template' + ext_fig)
-    plot_t1(template_brain_no_skull, title='template, no skull',
-            fig_dir=path_figs, fig_file='0_1_template_no_skull' + ext_fig)
-    plot_t1(t1_file, title='original',
-            fig_dir=path_figs, fig_file='1_original_t1' + ext_fig)
+    plot_errs = ''
+    ok, err = plot_t1(template_brain, title='template',
+                      fig_dir=path_figs, fig_file='0_template' + ext_fig)
+    if not ok:
+        plot_errs += err
+
+    ok, err = plot_t1(template_brain_no_skull, title='template, no skull',
+                      fig_dir=path_figs,
+                      fig_file='0_1_template_no_skull' + ext_fig)
+    if not ok:
+        plot_errs += err
+
+    ok, err = plot_t1(t1_file, title='original',
+                      fig_dir=path_figs, fig_file='1_original_t1' + ext_fig)
+    if not ok:
+        plot_errs += err
+
     plot_mask(mask_no_skull_file, title='mask',
               fig_dir=path_figs, fig_file='2_mask_no_skull' + ext_fig)
-    plot_t1(t1_no_skull_file, title='original, no skull',
-            fig_dir=path_figs, fig_file='3_original_no_skull' + ext_fig)
-    plot_t1(t1_no_skull_file_bias, title='original, no skull',
-            fig_dir=path_figs,
-            fig_file='3_5_original_no_skull_bias' + ext_fig)
+    ok, err = plot_t1(t1_no_skull_file, title='original, no skull',
+                      fig_dir=path_figs,
+                      fig_file='3_original_no_skull' + ext_fig)
+    if not ok:
+        plot_errs += err
+
+    ok, err = plot_t1(t1_no_skull_file_bias, title='original, no skull',
+                      fig_dir=path_figs,
+                      fig_file='3_5_original_no_skull_bias' + ext_fig)
+    if not ok:
+        plot_errs += err
+
     plot_mask(lesion_img, title='lesion',
               fig_dir=path_figs, fig_file='4_lesion' + ext_fig)
     plot_mask(no_skull_lesion_img, title='lesion, mask',
               fig_dir=path_figs,
               fig_file='5_mask_lesion_no_skull' + ext_fig)
-    plot_t1(no_skull_norm_t1_file,  title='t1, no skull, norm',
-            fig_dir=path_figs, fig_file='6_t1_no_skull_norm' + ext_fig)
+    ok, err = plot_t1(no_skull_norm_t1_file,  title='t1, no skull, norm',
+                      fig_dir=path_figs,
+                      fig_file='6_t1_no_skull_norm' + ext_fig)
+    if not ok:
+        plot_errs += err
+
     plot_mask(no_skull_norm_lesion_file,  title='lesion, no skull, norm',
               fig_dir=path_figs,
               fig_file='7_lesion_no_skull_norm' + ext_fig)
@@ -545,8 +588,9 @@ def preprocess_image(next_id, path_raw, path_template, subj_info_file):
     plot_overlay(no_skull_norm_lesion_file, path_bg=no_skull_norm_t1_file,
                  title='after', fig_dir=path_figs,
                  fig_file='9_after_t1_lesion' + ext_fig)
-    plt.show()
+    # plt.show()
     plt.close('all')
+    next_subj['Error'] = plot_errs
 
     # save the info in the .csv file
     print(f'saving the info to the {csv_file}')
@@ -565,7 +609,7 @@ def preprocess_image(next_id, path_raw, path_template, subj_info_file):
 
 
 def save_to_csv(subj_info_file, next_subj, next_id):
-    df = pd.DataFrame(next_subj, index=[next_id])
+    df = pd.DataFrame(next_subj, index=[int(next_id)])
     df.to_csv(subj_info_file, mode='a', header=False)
 
 
