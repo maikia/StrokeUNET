@@ -21,7 +21,7 @@ if os.environ.get('DISPLAY'):
     N_JOBS = 1
 else:
     # running on the server
-    N_JOBS = 1
+    N_JOBS = -1
 
 mem = Memory('./')
 
@@ -82,7 +82,7 @@ def strip_skull_mask(t1_file_in, t1_file_out, mask_file_out, frac=0.3):
         data = load_img(t1_file_in).get_fdata()
         md = np.mean(data)
         if md < 20:
-            frac = 0.5
+            frac = 0.3
         elif md < 25:
             frac = 0.4
         else:
@@ -614,10 +614,10 @@ def save_to_csv(subj_info_file, next_subj, next_id):
 
 
 if __name__ == "__main__":
-    dataset_name = 'dataset_3'  # also dataset_2, TODO: dataset_healthy
+    dataset_name = 'dataset_1'  # also dataset_2, TODO: dataset_healthy
     # rerun_all: if set to True, all the preprocessed data saved
     # so far will be removed
-    rerun_all = False  # careful !!
+    rerun_all = True  # careful !!
     ext_fig = '.png'
     csv_file = 'subject_info.csv'
 
