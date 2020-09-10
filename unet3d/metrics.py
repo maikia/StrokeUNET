@@ -1,10 +1,9 @@
 from functools import partial
 
 import os
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
-
-from keras import backend as K
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+from keras import backend as K  # noqa: E402
 
 
 def dice_coefficient(y_true, y_pred, smooth=1.):
@@ -13,26 +12,29 @@ def dice_coefficient(y_true, y_pred, smooth=1.):
 
     intersection = K.sum(y_true_f * y_pred_f)
 
-    return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
-    
-    
+    return ((2. * intersection + smooth) / (K.sum(y_true_f) +
+            K.sum(y_pred_f) + smooth))
+
+
 def dice_coefficient_loss(y_true, y_pred):
     return -dice_coefficient(y_true, y_pred)
 
 
-def weighted_dice_coefficient(y_true, y_pred, axis=(-3, -2, -1), smooth=0.00001):
+def weighted_dice_coefficient(y_true, y_pred, axis=(-3, -2, -1),
+                              smooth=0.00001):
     """
-    Weighted dice coefficient. Default axis assumes a "channels first" data structure
+    Weighted dice coefficient. Default axis assumes a "channels first" data
+    structure
     :param smooth:
     :param y_true:
     :param y_pred:
     :param axis:
     :return:
     """
-    return K.mean(2. * (K.sum(y_true * y_pred,
-                              axis=axis) + smooth/2)/(K.sum(y_true,
-                                                            axis=axis) + K.sum(y_pred,
-                                                                               axis=axis) + smooth))
+    return K.mean(
+        2. * (K.sum(y_true * y_pred, axis=axis) + smooth/2) /
+        (K.sum(y_true, axis=axis) + K.sum(y_pred, axis=axis) + smooth)
+        )
 
 
 def weighted_dice_coefficient_loss(y_true, y_pred):
