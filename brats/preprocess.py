@@ -82,11 +82,11 @@ def strip_skull_mask(t1_file_in, t1_file_out, mask_file_out, frac=0.3):
         data = load_img(t1_file_in).get_fdata()
         md = np.mean(data)
         if md < 20:
-            frac = 0.3
+            frac = 0.5
         elif md < 25:
             frac = 0.4
         else:
-            frac = 0.5
+            frac = 0.3
     skullstrip = BET(in_file=t1_file_in, out_file=t1_file_out, mask=False,
                      frac=frac)
     skullstrip.run()
@@ -459,6 +459,32 @@ def plot_overlay(path_mask, path_bg, title, fig_dir, fig_file):
         return 1, None
 
 
+def move_patient_data(dir_from, dir_to,
+                      t1_name_old='no_skull_norm_t1.nii.gz',
+                      lesion_name_old='no_skull_norm_lesion.nii.gz',
+                      t1_name='T1.nii.gz', lesion_name='truth.nii.gz'):
+    path_list = find_dirs(raw_dir=dir_from, ext=t1_name_old)
+    for path in path_list:
+        # make the new directory
+        if not os.path.exists(path):
+            new_path = os.path.join(dir_to, os.path.basename(path))
+            os.mkdir(new_path)
+        old_t1_path = os.path.join(path,
+                                   os.path.basename(path),
+                                   t1_name_old)
+        old_lesion_path = os.path.join(path,
+                                       os.path.basename(path),
+                                       lesion_name_old)
+        new_t1_path = os.path.join(dir_to,
+                                   os.path.basename(path),
+                                   t1_name)
+        new_lesion_path = os.path.join(dir_to,
+                                       os.path.basename(path),
+                                       lesion_name)
+        shutil.copy(old_t1_path, new_t1_path)
+        shutil.copy(old_lesion_path, new_lesion_path)
+
+
 def preprocess_image(next_id, path_raw, path_template, subj_info_file):
     print(f'subject {next_id}, working on {path_raw}')
     path_results = os.path.join(results_dir, f'subject_{next_id}')
@@ -531,7 +557,6 @@ def preprocess_image(next_id, path_raw, path_template, subj_info_file):
                      template_brain_no_skull, transform_matrix_file)
     normalize_to_transform(no_skull_lesion_file, no_skull_norm_lesion_file,
                            path_template, transform_matrix_file)
-
     # TODO: any other steps? resampling?
 
     # 5. Plot the results
@@ -626,7 +651,13 @@ if __name__ == "__main__":
                     'RawSize_x', 'RawSize_y', 'RawSize_z',
                     'NewSize_x', 'NewSize_y', 'NewSize_z',
                     'RawLesionSize', 'NewLesionSize', 'Error']
-    results_dir = 'data/preprocessed/'
+
+    results_dir = 'data/preprocessing_steps/'  # all the preprocessing steps
+    # can be found here, including the .nii.gz files and the corresponding
+    #figures
+    data_dir = 'data/preprocessed/'  # only preprocessed T1.nii.gz and
+    # corresponding truth.nii.gz binary lesion masks are saved in this
+    # directory
 
     # find mni templates at:
     # http://www.bic.mni.mcgill.ca/ServicesAtlases/ICBM152NLin2009
@@ -672,4 +703,9 @@ if __name__ == "__main__":
         for idx, path_raw in enumerate(path_list)
     )
 
+    # move all the patients final preprocessed results to the data_dir:
+    move_patient_data(dir_from=results_dir, dir_to=data_dir,
+                      t1_name_old='no_skull_norm_t1.nii.gz',
+                      lesion_name_old='no_skull_norm_lesion.nii.gz',
+                      t1_name='T1.nii.gz', lesion_name='truth.nii.gz')
     print(f'saved results from {len(dict_result)} patient directories')
