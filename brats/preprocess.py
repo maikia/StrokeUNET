@@ -52,7 +52,7 @@ def apply_mask_to_image(mask, img):
         return 0, err_msg
 
 
-def strip_skull_mask(t1_file_in, t1_file_out, mask_file_out, frac=0.3):
+def strip_skull_mask(t1_file_in, t1_file_out, mask_file_out, frac='auto'):
     """strips the skull from the T1 MRI image
     ----------
     t1_file_in: an existing file name
@@ -464,22 +464,20 @@ def move_patient_data(dir_from, dir_to,
                       lesion_name_old='no_skull_norm_lesion.nii.gz',
                       t1_name='T1.nii.gz', lesion_name='truth.nii.gz'):
     path_list = find_dirs(raw_dir=dir_from, ext=t1_name_old)
+    if not os.path.exists(dir_to):
+        os.mkdir(dir_to)
     for path in path_list:
         # make the new directory
-        if not os.path.exists(path):
-            new_path = os.path.join(dir_to, os.path.basename(path))
+        new_path = os.path.join(dir_to, os.path.basename(path))
+        if not os.path.exists(new_path):
             os.mkdir(new_path)
         old_t1_path = os.path.join(path,
-                                   os.path.basename(path),
                                    t1_name_old)
         old_lesion_path = os.path.join(path,
-                                       os.path.basename(path),
                                        lesion_name_old)
-        new_t1_path = os.path.join(dir_to,
-                                   os.path.basename(path),
+        new_t1_path = os.path.join(new_path,
                                    t1_name)
-        new_lesion_path = os.path.join(dir_to,
-                                       os.path.basename(path),
+        new_lesion_path = os.path.join(new_path,
                                        lesion_name)
         shutil.copy(old_t1_path, new_t1_path)
         shutil.copy(old_lesion_path, new_lesion_path)
