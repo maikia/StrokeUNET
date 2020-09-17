@@ -31,7 +31,7 @@ def dice_coefficient(truth, prediction):
 
 
 def main():
-    prediction_dir = 'prediction_126_cut_size'
+    prediction_dir = 'prediction'
     ext = '.png'
 
     filename_truth = 'truth.nii.gz'

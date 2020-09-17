@@ -82,11 +82,11 @@ def strip_skull_mask(t1_file_in, t1_file_out, mask_file_out, frac='auto'):
         data = load_img(t1_file_in).get_fdata()
         md = np.mean(data)
         if md < 20:
-            frac = 0.5
-        elif md < 25:
             frac = 0.4
-        else:
+        elif md < 25:
             frac = 0.3
+        else:
+            frac = 0.2
     skullstrip = BET(in_file=t1_file_in, out_file=t1_file_out, mask=False,
                      frac=frac)
     skullstrip.run()

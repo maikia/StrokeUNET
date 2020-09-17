@@ -124,14 +124,14 @@ def _make_new_folder(new_dir):
 
 
 if __name__ == "__main__":
-    prediction_dir = 'prediction_126_cut_size'
+    prediction_dir = 'prediction'
     ext = '.png'
     filename_t1 = 'data_no_skull_norm_t1.nii.gz'
     filename_truth = 'truth.nii.gz'
     filename_predict = 'prediction.nii.gz'
 
     # plot image
-    df = pd.read_csv(os.path.join(prediction_dir, 'brats_scores.csv'))
+    df = pd.read_csv(os.path.join(prediction_dir, 'scores.csv'))
     plot_dice_coeff_score_hist(df, prediction_dir, ext=ext)
     plot_dice_coeff_score(df, prediction_dir, ext=ext)
     plot_for_all_subjects(prediction_dir, ext=ext,

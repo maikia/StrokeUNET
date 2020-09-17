@@ -12,7 +12,7 @@ from unet3d.metrics import dice_coefficient_loss, weighted_dice_coefficient
 from unet3d.metrics import weighted_dice_coefficient_loss
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 K.set_image_data_format('channels_first')
 K.common.set_image_dim_ordering('th')
