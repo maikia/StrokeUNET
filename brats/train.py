@@ -9,20 +9,20 @@ from unet3d.training import load_old_model, train_model  # noqa: E402
 from unet3d.utils.utils import find_dirs  # noqa: E402
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 
 config = dict()
-config["image_shape"] = (256, 256, 256)  # determines what shape the images
+config["image_shape"] = (128, 128, 128)  # determines what shape the images
 # will be cropped/resampled to
-config["patch_shape"] = (128, 128, 128)  # switch to None to train on the
+config["patch_shape"] = None  # switch to None to train on the
 # whole image
 config["labels"] = (1,)  # the label numbers on the input image, eg (1, 2, 4)
 config["n_base_filters"] = 16
 config["n_labels"] = len(config["labels"])
-config["fname_T1"] = "no_skull_norm_t1.nii.gz"  # name of the T1 files
+config["fname_T1"] = "T1.nii.gz"  # name of the T1 files
 # (note, that differs from original ellisdg settings)
-config["fname_truth"] = "no_skull_norm_lesion.nii.gz"
+config["fname_truth"] = "truth.nii.gz"
 config["nb_channels"] = 1
 if "patch_shape" in config and config["patch_shape"] is not None:
     config["input_shape"] = tuple([config["nb_channels"]] +
@@ -59,7 +59,7 @@ config["training_patch_start_offset"] = (16, 16, 16)  # randomly offset the
 # first patch index by up to this offset
 config["skip_blank"] = False  # if True, then patches without any target will
 # be skipped
-
+config["data_dir"] = "data/preprocessed/"
 config["data_file"] = os.path.abspath("stroke_data.h5")
 config["model_file"] = os.path.abspath("unet_model.h5")
 config["training_file"] = os.path.abspath("training_ids.pkl")
@@ -108,6 +108,7 @@ def main(overwrite=False):
     if overwrite or not os.path.exists(config["data_file"]):
         # fetch the data files
         training_files, subject_ids = fetch_training_data_files(
+            data_dir=config["data_dir"],
             return_subject_ids=True)
         # write all the data files into the hdf5 file
         write_data_to_file(training_files,
