@@ -336,10 +336,17 @@ def read_dataset(name):
     dict: dictionary
         dictionary info for that dataset
     """
+    if not os.environ.get('DISPLAY'):
+        # running on the server
+        data_storage = ('/../../../storage/store2/work/mtelencz/data/'
+                        'stroke/data/')
+    else:
+        # running locally
+        data_storage = ('/home/maja/Documents/data/data/stroke/data/')
     # first data set
     dataset1 = {
         "name": 'dataset_1',
-        "raw_dir": '../../data/ATLAS_R1.1/',
+        "raw_dir": os.path.join(data_storage, 'ATLAS_R1.1-public/'),
         "lesion_str": 'Lesion',
         "t1_inc_str": 't1',
         "t1_exc_str": None
@@ -350,7 +357,8 @@ def read_dataset(name):
     # second data set
     dataset2 = {
         "name": 'dataset_2',
-        "raw_dir": '../../data/BIDS_lesions_zip/',
+        "raw_dir": os.path.join(data_storage, 'BIDS-private/'),
+        # ../../data/BIDS_lesions_zip/',
         "lesion_str": 'lesion',
         "t1_inc_str": 'T1',
         "t1_exc_str": 'label'
@@ -368,7 +376,7 @@ def read_dataset(name):
     if name == dataset3['name']:
         return dataset3
 
-    # third dataset (healthy patinets)
+    # third dataset (healthy patients)
     # here all the scans are in the single directory
     dataset_healthy = {
         "name": 'dataset_healthy',
@@ -670,9 +678,9 @@ if __name__ == "__main__":
 
     # find all the directories with the 'nii.gz' files
     ext = '.nii.gz'
-    data = read_dataset(dataset_name)
-    assert data is not None
-    raw_dir = data['raw_dir']
+    data_info = read_dataset(dataset_name)
+    assert data_info is not None
+    raw_dir = data_info['raw_dir']
     print(f'Wait. I am searching for "{ext}" files in {raw_dir}')
     path_list = find_dirs(raw_dir=raw_dir, ext=ext)
     n_dirs = len(path_list)
