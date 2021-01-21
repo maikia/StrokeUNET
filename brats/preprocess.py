@@ -26,6 +26,17 @@ else:
 mem = Memory('./')
 
 
+def get_mean(t1_file_in):
+    """
+    t1_file_in: an existing file name
+        path nifti file with the T1 MRI image with the skull
+    """
+    data_image = load_img(t1_file_in).get_fdata()
+    mean_data = np.mean(data_image)
+    del data_image
+    return mean_data
+
+
 def apply_mask_to_image(mask, img):
     """given a mask (in a form of nilearn image) it applies it to the img and
         returns the masked img. That is: all the values equals to 0 in the mask
@@ -342,7 +353,7 @@ def read_dataset(name):
                         'stroke/data/')
     else:
         # running locally
-        data_storage = ('/home/maja/Documents/data/data/stroke/data/')
+        data_storage = ('/home/maja/Documents/drago4/data/')
     # first data set
     dataset1 = {
         "name": 'dataset_1',

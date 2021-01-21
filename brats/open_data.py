@@ -1,6 +1,9 @@
 import numpy as np
 import os
-from preprocess import read_dataset, init_dict, find_dirs, combine_lesions
+import pandas as pd
+from preprocess import read_dataset, find_dirs, combine_lesions
+from preprocess import get_mean
+import cProfile
 
 
 def list_files(data_info):
@@ -30,7 +33,8 @@ def read_lesion_info(case):
         ok, lesion_img = combine_lesions(case[0], lesion_str=lesion)
         lesion_size += np.sum(lesion_img.get_fdata())
     x, y, z = lesion_img.shape
-    return lesion_size, x, y, z
+    del lesion_img
+    return int(lesion_size), x, y, z
 
 
 if __name__ == "__main__":
@@ -44,6 +48,8 @@ if __name__ == "__main__":
         dataset_name = 'dataset_2'
         filename = 'private.csv'
     path_analysis = 'data/data_analysis'
+    path_raw = os.path.join(path_analysis, filename)
+
     if not os.path.exists(path_analysis):
         os.mkdir(path_analysis)
 
@@ -51,14 +57,29 @@ if __name__ == "__main__":
     assert data_info is not None
     file_list = list_files(data_info)
 
-    column_names = ['RawPath', 'n_lesions',
+    column_names = ['RawPath', 'T1_filenam', 'n_lesions',
                     'RawSize_x', 'RawSize_y', 'RawSize_z',
                     'RawLesionSize', 'AverageGrey']
 
-    for next_case in file_list:
-        lesion_size, x, y, z = read_lesion_info(next_case)
+    data = []
+    if not len(file_list):
+        print(f'No data files found int {file_list}')
+    else:
+        print('Please wait. I am gathering information')
+        n_file = 0
+        n_all_files = len(file_list)
+        for next_case in file_list[:50]:
+            n_file += 1
+            print(n_file, '/', n_all_files)
+            lesion_size, x, y, z = read_lesion_info(next_case)
 
+            t1_path = os.path.join(next_case[0], next_case[1])
+            mean_color = format(get_mean(t1_path), '.4f')
+            data.append([next_case[0], next_case[1],
+                         len(next_case[2]), x, y, z, lesion_size, t1_path,
+                         mean_color])
 
-    import pdb; pdb.set_trace()
-    next_subj = init_dict(column_names, RawPath=path_raw,
-                          ProcessedPath=path_results, NewID=next_id)
+        pd_data = pd.DataFrame.from_records(data)
+        save_file = os.path.join(path_analysis, filename)
+        pd_data.to_csv()
+
