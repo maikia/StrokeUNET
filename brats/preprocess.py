@@ -353,7 +353,7 @@ def read_dataset(name):
                         'stroke/data/')
     else:
         # running locally
-        data_storage = ('/home/maja/Documents/drago4/data/')
+        data_storage = ('../../../data/')
     # first data set
     dataset1 = {
         "name": 'dataset_1',
