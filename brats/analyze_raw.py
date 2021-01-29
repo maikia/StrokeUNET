@@ -43,19 +43,28 @@ def find_common_prefix(string_list):
     return prefix
 
 
-def read_lesion_info(case):
+def read_lesion_info(case, save_path=None):
     """
         given a specific format (raw_dir, t1_name, (lesions_names))
         it opens all the lesions and gets out from them the size and the total
         lesion size and returns it
+        case: dict []
+        save_path: str, path where to save the lesion (must be path to nii.gz
+        file). if None the lesion will not be saved
     """
     if len(case[2]) > 1:
-        import pdb; pdb.set_trace()
-    lesion_size = 0
-    for lesion in case[2]:
-        ok, lesion_img = combine_lesions(case[0], lesion_str=lesion)
-        lesion_size += np.sum(lesion_img.get_fdata())
+        common_prefix = find_common_prefix(case[2])
+    else:
+        common_prefix = case[2][0]
+
+    ok, lesion_img = combine_lesions(case[0], lesion_str=common_prefix)
+
+    lesion_size = np.sum(lesion_img.get_fdata())
     x, y, z = lesion_img.shape
+
+    if save_path and ('nii.gz' in save_path):
+        lesion_img.to_filename(save_path)
+        print('saved lesion file to ', {save_path})
     del lesion_img
     return int(lesion_size), x, y, z
 
@@ -63,13 +72,22 @@ def read_lesion_info(case):
 if __name__ == "__main__":
     ext = '.nii.gz'
     is_public = True
+    save_dir = 'data'
+    # if True the new T1 and the combined will be saved in a given path
+    save_preprocessed_data = True
 
     if is_public:
         dataset_name = 'dataset_1'
         filename = 'public.csv'
+        save_dir = os.path.join(save_dir, 'public')
     else:
         dataset_name = 'dataset_2'
         filename = 'private.csv'
+        save_dir = os.path.join(save_dir, 'private')
+    if save_preprocessed_data:
+        if not os.path.exists(save_dir):
+            os.mkdir(save_dir)
+
     path_analysis = 'data/data_analysis'
     path_raw = os.path.join(path_analysis, filename)
 
@@ -83,8 +101,12 @@ if __name__ == "__main__":
     column_names = ['RawPath', 'T1_filename', 'n_lesions',
                     'RawSize_x', 'RawSize_y', 'RawSize_z',
                     'RawLesionSize', 'AverageGrey']
+    if save_preprocessed_data:
+        column_names.extend(['NewPath', 'NewT1_name', 'NewMask_name',
+                            'NewAverageGrey'])
 
     data = []
+    idx = 1
     if not len(file_list):
         print(f'No data files found in {data_info["raw_dir"]}')
     else:
@@ -94,13 +116,32 @@ if __name__ == "__main__":
         for next_case in file_list:
             n_file += 1
             print(n_file, '/', n_all_files)
-            lesion_size, x, y, z = read_lesion_info(next_case)
+
+            if save_preprocessed_data:
+                new_lesion_file_name = str(idx) + '_lesion.nii.gz'
+                save_path = os.path.join(save_dir, new_lesion_file_name)
+                lesion_size, x, y, z = read_lesion_info(next_case,
+                                                        save_path=save_path)
+                idx += 1
+            else:
+                lesion_size, x, y, z = read_lesion_info(next_case)
 
             t1_path = os.path.join(next_case[0], next_case[1])
             mean_color = format(get_mean(t1_path), '.4f')
-            data.append([next_case[0], next_case[1],
-                         len(next_case[2]), x, y, z, lesion_size,
-                         mean_color])
+
+            if not save_preprocessed_data:
+                data.append([next_case[0], next_case[1],
+                            len(next_case[2]), x, y, z, lesion_size,
+                            mean_color])
+            else:
+                data.append([next_case[0], next_case[1],
+                             len(next_case[2]), x, y, z, lesion_size,
+                             mean_color, save_dir,
+                             'NewT1_name', new_lesion_file_name,
+                             'NewAverageGrey'])
+            import pdb; pdb.set_trace()
+
+
 
         pd_data = pd.DataFrame.from_records(data, columns=column_names)
         save_file = os.path.join(path_analysis, filename)

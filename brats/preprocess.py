@@ -146,13 +146,14 @@ def combine_lesions(path, lesion_str='Lesion'):
                 err_msg = (f'shape mismatch: {np.shape(lesion)} vs'
                            f'{np.shape(lesion_data)}')
                 return 0, err_msg
+            else:
                 lesion += lesion_data
             n_lesions += 1
     if n_lesions > 0:
         lesion[lesion > 0] = 1
         masked = new_img_like(lesion_img, lesion,
                               affine=None, copy_header=False)
-        return 1, masked
+        return n_lesions, masked
     else:
         # there are no lesions found
         warnings.warn('there are no lesion files with name including '
