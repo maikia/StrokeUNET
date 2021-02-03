@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 import sys
 
 sys.path.append('./')
@@ -59,7 +60,7 @@ config["training_patch_start_offset"] = (16, 16, 16)  # randomly offset the
 # first patch index by up to this offset
 config["skip_blank"] = False  # if True, then patches without any target will
 # be skipped
-config["data_dir"] = "data/preprocessed/"
+config["data_dir"] = "data/"  # "data/preprocessed/"
 config["data_file"] = os.path.abspath("stroke_data.h5")
 config["model_file"] = os.path.abspath("unet_model.h5")
 config["training_file"] = os.path.abspath("training_ids.pkl")
@@ -106,18 +107,31 @@ def fetch_training_data_files(data_dir='data/',
 def main(overwrite=False):
     # run if the data not already stored hdf5
     if overwrite or not os.path.exists(config["data_file"]):
+        '''
         # fetch the data files
         training_files, subject_ids = fetch_training_data_files(
             data_dir=config["data_dir"],
             return_subject_ids=True)
+        '''
+        # read data files paths from the .csv file
+        data_dir=config["data_dir"]
+        data = pd.read_csv(os.path.join(data_dir,
+                                        'data_analysis', 'public.csv'))
+        data_path = os.path.join(data_dir, 'public')
+        data_paths = data[
+            ['NewT1_name', 'NewMask_name']].apply(
+                lambda s: data_path + '/' + s)
+        training_files = data_paths.values.tolist()
+
         # write all the data files into the hdf5 file
         write_data_to_file(training_files,
                            config["data_file"],
-                           image_shape=config["image_shape"],
-                           subject_ids=subject_ids)
+                           image_shape=config["image_shape"])
+                           # subject_ids=subject_ids)
+
     data_file_opened = open_data_file(config["data_file"])
 
-    if not overwrite and os.path.exists(config["model_file"]):
+    if False and overwrite and os.path.exists(config["model_file"]):
         model = load_old_model(config["model_file"])
     else:
         # instantiate new model
