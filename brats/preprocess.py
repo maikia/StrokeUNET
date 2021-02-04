@@ -26,15 +26,31 @@ else:
 mem = Memory('./')
 
 
-def get_mean(t1_file_in):
+def get_nifti_data(t1_file_in):
+    data_image = load_img(t1_file_in).get_fdata()
+    return data_image
+
+
+def get_mean(data_t1, normalize_to_mean=None, save_path=None):
     """
     t1_file_in: an existing file name
         path nifti file with the T1 MRI image with the skull
+
+        normalize_to_mean: if not None, the image will be normalized before
+        saving. It won't have any effect if save_path is None or not valid
+        save_path: str or None, if str to path with .nii.gz file the f
     """
-    data_image = load_img(t1_file_in).get_fdata()
-    mean_data = np.mean(data_image)
-    del data_image
+    mean_data = np.mean(data_t1)
     return mean_data
+
+
+def normalize_intensity(nifti_filename, new_mean_normalize):
+    img_nifti = load_img(nifti_filename)
+    data_nifti = img_nifti.get_fdata()
+    img_data = data_nifti / get_mean(data_nifti) * new_mean_normalize
+    normalized_data = new_img_like(img_nifti, img_data, affine=None,
+                                   copy_header=False)
+    return normalized_data
 
 
 def apply_mask_to_image(mask, img):

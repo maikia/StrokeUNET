@@ -2,7 +2,23 @@ import numpy as np
 import os
 import pandas as pd
 from preprocess import read_dataset, find_dirs, combine_lesions
-from preprocess import get_mean
+from preprocess import get_mean, get_nifti_data, normalize_intensity
+
+
+def normalize_t1_intensity(t1_path, save_path, new_intensity):
+    t1_data = get_nifti_data(t1_path)
+    old_mean = get_mean(t1_data)
+    t1_img = normalize_intensity(t1_path, new_intensity)
+    new_mean = get_mean(t1_img.get_fdata())
+
+    if not np.isclose(new_intensity, new_mean):
+        print(f'something wrong, new intensity is {new_mean} instead of '
+              f'{new_intensity}')
+    if save_path and ('nii.gz' in save_path):
+        t1_img.to_filename(save_path)
+        print('saved t1 file to ', {save_path})
+    del t1_data, t1_img
+    return old_mean
 
 
 def list_files(data_info):
@@ -71,10 +87,13 @@ def read_lesion_info(case, save_path=None):
 
 if __name__ == "__main__":
     ext = '.nii.gz'
-    is_public = True
+    is_public = False
     save_dir = 'data'
     # if True the new T1 and the combined will be saved in a given path
     save_preprocessed_data = True
+    # normalize all T1 to the same intentisty (in private raw data it varies
+    # a lot)
+    new_mean_intensity = 30
 
     if is_public:
         dataset_name = 'dataset_1'
@@ -116,35 +135,34 @@ if __name__ == "__main__":
         for next_case in file_list:
             n_file += 1
             print(n_file, '/', n_all_files)
+            t1_path = os.path.join(next_case[0], next_case[1])
 
             if save_preprocessed_data:
                 new_lesion_file_name = str(idx) + '_lesion.nii.gz'
-                save_path = os.path.join(save_dir, new_lesion_file_name)
-                lesion_size, x, y, z = read_lesion_info(next_case,
-                                                        save_path=save_path)
+                save_path_lesion = os.path.join(save_dir, new_lesion_file_name)
+                lesion_size, x, y, z = read_lesion_info(
+                    next_case, save_path=save_path_lesion)
+
+                new_t1_filename = str(idx) + '_T1.nii.gz'
+                save_path_t1 = os.path.join(save_dir, new_t1_filename)
+                old_mean_intensity = normalize_t1_intensity(
+                    t1_path, save_path_t1, new_mean_intensity)
                 idx += 1
             else:
                 lesion_size, x, y, z = read_lesion_info(next_case)
 
-            t1_path = os.path.join(next_case[0], next_case[1])
-            mean_color = format(get_mean(t1_path), '.4f')
-
             if not save_preprocessed_data:
                 data.append([next_case[0], next_case[1],
                             len(next_case[2]), x, y, z, lesion_size,
-                            mean_color])
+                            old_mean_intensity])
             else:
                 data.append([next_case[0], next_case[1],
                              len(next_case[2]), x, y, z, lesion_size,
-                             mean_color, save_dir,
-                             'NewT1_name', new_lesion_file_name,
-                             'NewAverageGrey'])
-            import pdb; pdb.set_trace()
-
-
+                             old_mean_intensity, save_dir,
+                             new_t1_filename, new_lesion_file_name,
+                             new_mean_intensity])
 
         pd_data = pd.DataFrame.from_records(data, columns=column_names)
         save_file = os.path.join(path_analysis, filename)
         pd_data.to_csv(save_file)
         print(f'Saved {n_all_files} rows to {save_file}')
-
