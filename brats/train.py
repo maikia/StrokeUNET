@@ -5,7 +5,8 @@ import sys
 sys.path.append('./')
 from unet3d.data import open_data_file, write_data_to_file  # noqa: E402
 from unet3d.generator import get_training_and_validation_generators  # noqa: E402
-from unet3d.model import isensee2017_model  # noqa: E402
+# from unet3d.model import isensee2017_model  # noqa: E402
+from unet3d.model import unet_model_3d
 from unet3d.training import load_old_model, train_model  # noqa: E402
 from unet3d.utils.utils import find_dirs  # noqa: E402
 
@@ -14,11 +15,12 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 
 config = dict()
-config["image_shape"] = (186, 186, 186) # (128, 128, 128)  # determines what shape the images
+config["pool_size"] = (2, 2, 2)
+config["image_shape"] = (144, 144, 144)  # (256, 256, 256) # (128, 128, 128)  # determines what shape the images
 # will be cropped/resampled to
-config["patch_shape"] = None  # switch to None to train on the
+config["patch_shape"] =  (64, 64, 64)  # switch to None to train on the
 # whole image
-config["labels"] = (1,)  # the label numbers on the input image, eg (1, 2, 4)
+config["labels"] = (1)  # the label numbers on the input image, eg (1, 2, 4)
 config["n_base_filters"] = 16
 config["n_labels"] = 1  # len(config["labels"])
 # config["fname_T1"] = "T1.nii.gz"  # name of the T1 files
@@ -36,21 +38,21 @@ else:
 config["truth_channel"] = config["nb_channels"]
 config["deconvolution"] = True  # if False, will use upsampling instead
 # of deconvolution
-config["batch_size"] = 1
-config["validation_batch_size"] = 2
+config["batch_size"] = 6
+config["validation_batch_size"] = 12
 config["n_epochs"] = 500  # cutoff the training after this many epochs
 config["patience"] = 10  # learning rate will be reduced after this many epochs
 # if the validation loss is not improving
 config["early_stop"] = 50  # training will be stopped after this many epochs
 # without the validation loss improving
-config["initial_learning_rate"] = 5e-4
+config["initial_learning_rate"] = 5e-5
 config["learning_rate_drop"] = 0.5  # factor by which the learning rate
 # will be reduced
-config["validation_split"] = 0.8  # portion of the data that will be used for
+config["validation_split"] = 0.7  # portion of the data that will be used for
 # training
 config["flip"] = False  # augments the data by randomly flipping
 # an axis
-config["permute"] = True  # data shape must be a cube. Augments the data by
+config["permute"] = False  # data shape must be a cube. Augments the data by
 # permuting in various directions
 config["distort"] = None  # switch to None if you want no distortion
 config["augment"] = False
@@ -65,8 +67,9 @@ config["data_file"] = os.path.abspath("stroke_data.h5")
 config["model_file"] = os.path.abspath("unet_model.h5")
 config["training_file"] = os.path.abspath("training_ids.pkl")
 config["validation_file"] = os.path.abspath("validation_ids.pkl")
-config["overwrite"] = True  # If True, will overwrite previous files.
+config["overwrite_data"] = False  # If True, will overwrite previous files.
 # If False, will use previously written files.
+config["overwrite_model"] = True
 
 '''
 def fetch_training_data_files(data_dir='data/',
@@ -105,9 +108,9 @@ def fetch_training_data_files(data_dir='data/',
 '''
 
 
-def main(overwrite=False):
+def main(overwrite_data=False, overwrite_model=False):
     # run if the data not already stored hdf5
-    if overwrite or not os.path.exists(config["data_file"]):
+    if overwrite_data or not os.path.exists(config["data_file"]):
         '''
         # fetch the data files
         training_files, subject_ids = fetch_training_data_files(
@@ -132,15 +135,25 @@ def main(overwrite=False):
 
     data_file_opened = open_data_file(config["data_file"])
 
-    if False and overwrite and os.path.exists(config["model_file"]):
+    if not overwrite_model and os.path.exists(config["model_file"]):
         model = load_old_model(config["model_file"])
     else:
         # instantiate new model
+        print('initializing new isensee model with input shape',
+              config['input_shape'])
+        '''
         model = isensee2017_model(
             input_shape=config["input_shape"],
             n_labels=config["n_labels"],
             initial_learning_rate=config["initial_learning_rate"],
             n_base_filters=config["n_base_filters"])
+        '''
+        model = unet_model_3d(input_shape=config["input_shape"],
+                              pool_size=config["pool_size"],
+                              n_labels=config["n_labels"],
+                              initial_learning_rate=config["initial_learning_rate"],
+                              deconvolution=config["deconvolution"])
+
 
     # get training and testing generators
     (train_generator, validation_generator, n_train_steps,
@@ -148,7 +161,7 @@ def main(overwrite=False):
         data_file_opened,
         batch_size=config["batch_size"],
         data_split=config["validation_split"],
-        overwrite=overwrite,
+        overwrite=overwrite_data,
         validation_keys_file=config["validation_file"],
         training_keys_file=config["training_file"],
         n_labels=config["n_labels"],
@@ -179,4 +192,5 @@ def main(overwrite=False):
 
 
 if __name__ == "__main__":
-    main(overwrite=config["overwrite"])
+    main(overwrite_data=config["overwrite_data"],
+         overwrite_model=config["overwrite_model"])
