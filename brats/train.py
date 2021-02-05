@@ -15,17 +15,17 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 
 config = dict()
-config["pool_size"] = (2, 2, 2)
-config["image_shape"] = (144, 144, 144)  # (256, 256, 256) # (128, 128, 128)  # determines what shape the images
+config["pool_size"] = (2, 2, 1)
+# We will be doing max pooling 3 times, so that the size of the image must be
+# divisible by 8 if the pooling size is 2. We are leaving the last dimension to
+# its original value because we keep max pooling third dim 1
+config["image_shape"] = (200, 240, 189)  #(197, 233, 189)  # (256, 256, 256) # (128, 128, 128)  # determines what shape the images
 # will be cropped/resampled to
-config["patch_shape"] =  (64, 64, 64)  # switch to None to train on the
-# whole image
+config["patch_shape"] =  (200, 240, 5)  # switch to None to train on the
+# whole image (cannot due to memory errors)
 config["labels"] = (1)  # the label numbers on the input image, eg (1, 2, 4)
 config["n_base_filters"] = 16
-config["n_labels"] = 1  # len(config["labels"])
-# config["fname_T1"] = "T1.nii.gz"  # name of the T1 files
-# (note, that differs from original ellisdg settings)
-# config["fname_truth"] = "truth.nii.gz"
+config["n_labels"] = 1  # we only have 0 or 1 for a lesion
 config["nb_channels"] = 1
 if "patch_shape" in config and config["patch_shape"] is not None:
     config["input_shape"] = tuple([config["nb_channels"]] +
@@ -45,16 +45,16 @@ config["patience"] = 10  # learning rate will be reduced after this many epochs
 # if the validation loss is not improving
 config["early_stop"] = 50  # training will be stopped after this many epochs
 # without the validation loss improving
-config["initial_learning_rate"] = 5e-5
+config["initial_learning_rate"] = 1e-5
 config["learning_rate_drop"] = 0.5  # factor by which the learning rate
 # will be reduced
-config["validation_split"] = 0.7  # portion of the data that will be used for
+config["validation_split"] = 0.8  # portion of the data that will be used for
 # training
 config["flip"] = False  # augments the data by randomly flipping
 # an axis
 config["permute"] = False  # data shape must be a cube. Augments the data by
 # permuting in various directions
-config["distort"] = None  # switch to None if you want no distortion
+config["distort"] = True  # switch to None if you want no distortion
 config["augment"] = False
 config["validation_patch_overlap"] = 0  # if > 0, during training, validation
 # patches will be overlapping
@@ -67,7 +67,7 @@ config["data_file"] = os.path.abspath("stroke_data.h5")
 config["model_file"] = os.path.abspath("unet_model.h5")
 config["training_file"] = os.path.abspath("training_ids.pkl")
 config["validation_file"] = os.path.abspath("validation_ids.pkl")
-config["overwrite_data"] = False  # If True, will overwrite previous files.
+config["overwrite_data"] = True  # If True, will overwrite previous files.
 # If False, will use previously written files.
 config["overwrite_model"] = True
 
@@ -120,8 +120,8 @@ def main(overwrite_data=False, overwrite_model=False):
         # read data files paths from the .csv file
         data_dir = config["data_dir"]
         data = pd.read_csv(os.path.join(data_dir,
-                                        'data_analysis', 'public.csv'))
-        data_path = os.path.join(data_dir, 'public')
+                                        'data_analysis', 'private.csv'))
+        data_path = os.path.join(data_dir, 'private')
         data_paths = data[
             ['NewT1_name', 'NewMask_name']].apply(
                 lambda s: data_path + '/' + s)
