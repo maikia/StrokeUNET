@@ -25,6 +25,7 @@ def unet_model_3d(input_shape, pool_size=(2, 2, 2), n_labels=1,
     Builds the 3D UNet Keras model.f
     :param metrics: List metrics to be calculated during model training
         (default is dice coefficient).
+    # Todo: remove the following:
     :param include_label_wise_dice_coefficients: If True and n_labels is
         greater than 1, model will report the dice coefficient for each label
         as metric.
@@ -100,7 +101,8 @@ def unet_model_3d(input_shape, pool_size=(2, 2, 2), n_labels=1,
 
     if not isinstance(metrics, list):
         metrics = [metrics]
-
+    '''
+    # This is never the case for the stroke case
     if include_label_wise_dice_coefficients and n_labels > 1:
         label_wise_dice_metrics = [get_label_dice_coefficient_function(index)
                                    for index in range(n_labels)
@@ -109,7 +111,7 @@ def unet_model_3d(input_shape, pool_size=(2, 2, 2), n_labels=1,
             metrics = metrics + label_wise_dice_metrics
         else:
             metrics = label_wise_dice_metrics
-
+    '''
     model.compile(
         optimizer=Adam(lr=initial_learning_rate),
         loss=dice_coefficient_loss, metrics=metrics
@@ -171,6 +173,7 @@ def compute_level_output_shape(n_filters, depth, pool_size, image_shape):
 def get_up_convolution(n_filters, pool_size, kernel_size=(2, 2, 2),
                        strides=(2, 2, 2), deconvolution=False):
     if deconvolution:
+        kernel_size = strides = pool_size
         return Deconvolution3D(filters=n_filters, kernel_size=kernel_size,
                                strides=strides)
     else:
