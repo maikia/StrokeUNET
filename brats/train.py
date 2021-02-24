@@ -11,7 +11,7 @@ from unet3d.training import load_old_model, train_model  # noqa: E402
 from unet3d.utils.utils import find_dirs  # noqa: E402
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 
 config = dict()
@@ -19,9 +19,13 @@ config["pool_size"] = (2, 2, 1)
 # We will be doing max pooling 3 times, so that the size of the image must be
 # divisible by 8 if the pooling size is 2. We are leaving the last dimension to
 # its original value because we keep max pooling third dim 1
-config["image_shape"] = (200, 240, 189)  #(197, 233, 189)  # (256, 256, 256) # (128, 128, 128)  # determines what shape the images
+config["image_shape"] = (200, 240, 189)  # original size: (197, 233, 189)
 # will be cropped/resampled to
-config["patch_shape"] =  (200, 240, 5)  # switch to None to train on the
+# (the above dims lead to an error:
+# ValueError: A `Concatenate` layer requires inputs with matching shapes
+# except for the concat axis. Got in puts shapes:
+# [(None, 512, 50, 60, 10), (None, 256, 50, 60, 5)]
+config["patch_shape"] = (200, 240, 5)  # switch to None to train on the
 # whole image (cannot due to memory errors)
 config["labels"] = (1)  # the label numbers on the input image, eg (1, 2, 4)
 config["n_base_filters"] = 16
@@ -54,7 +58,7 @@ config["flip"] = False  # augments the data by randomly flipping
 # an axis
 config["permute"] = False  # data shape must be a cube. Augments the data by
 # permuting in various directions
-config["distort"] = True  # switch to None if you want no distortion
+config["distort"] = None  # switch to None if you want no distortion
 config["augment"] = False
 config["validation_patch_overlap"] = 0  # if > 0, during training, validation
 # patches will be overlapping
@@ -62,76 +66,46 @@ config["training_patch_start_offset"] = (16, 16, 16)  # randomly offset the
 # first patch index by up to this offset
 config["skip_blank"] = True  # if True, then patches without any target will
 # be skipped
-config["data_dir"] = "data/"  # "data/preprocessed/"
+config["data_dir"] = "data/"
 config["data_file"] = os.path.abspath("stroke_data.h5")
 config["model_file"] = os.path.abspath("unet_model.h5")
 config["training_file"] = os.path.abspath("training_ids.pkl")
 config["validation_file"] = os.path.abspath("validation_ids.pkl")
-config["overwrite_data"] = True  # If True, will overwrite previous files.
+config["overwrite_data"] = False  # If True, will overwrite previous files.
 # If False, will use previously written files.
-config["overwrite_model"] = True
+config["overwrite_model"] = False
 
-'''
-def fetch_training_data_files(data_dir='data/',
-                              return_subject_ids=False):
-    """
-    Takes in the directory with the peprocessed data and finds all the
-    subdirectories which include the T1 filename stored in
-    config["fname_T1"]. It returns tuples of the paths to T1 image capled
-    with the lesion image (with name stored in config["fname_lesion"]
-    :param data_dir: path to the data directory
-    :return_subject_ids: boolean, should the indices (name of the subdirectory
-        of the subject) be also returned
-    :return: list of tuples. Each tuple consists of the path to the T1 file and
-        path to the corresponding lesion
-    """
-    training_data_files = list()
-    subject_ids = list()
 
-    subject_dirs = find_dirs(data_dir, config["fname_T1"])
-    for subject_dir in subject_dirs:
-        subject_ids.append(os.path.basename(subject_dir))
-        subject_files = list()
-        # append T1 files
-        subject_files.append(os.path.join(subject_dir,
-                                          config["fname_T1"])
-                             )
-        # append also the lesion files
-        subject_files.append(os.path.join(subject_dir,
-                                          config["fname_truth"])
-                             )
-        training_data_files.append(tuple(subject_files))
-    if return_subject_ids:
-        return training_data_files, subject_ids
-    else:
-        return training_data_files
-'''
+def _fetch_training_data_files(data_type='public'):
+    # read data files paths from the .csv file
+    # data_type might be 'public' or 'private'
+    data_dir = config["data_dir"]
+    data = pd.read_csv(os.path.join(data_dir,
+                                    'data_analysis', data_type + '.csv'))
+    data_path = os.path.join(data_dir, data_type)
+    data_paths = data[
+        ['NewT1_name', 'NewMask_name']].apply(
+            lambda s: data_path + '/' + s)
+    training_files = data_paths.values.tolist()
+    return training_files
+
+
+def _save_new_h5_datafile(data_file_h5, new_image_shape):
+    training_files = _fetch_training_data_files('private')
+
+    # write all the data files into the hdf5 file
+    # if necessary crop the data to the new dimensions (if less than original)
+    # or add the 0 layer around it (if more than original)
+    write_data_to_file(training_files,
+                       data_file_h5,
+                       image_shape=new_image_shape)
 
 
 def main(overwrite_data=False, overwrite_model=False):
     # run if the data not already stored hdf5
     if overwrite_data or not os.path.exists(config["data_file"]):
-        '''
-        # fetch the data files
-        training_files, subject_ids = fetch_training_data_files(
-            data_dir=config["data_dir"],
-            return_subject_ids=True)
-        '''
-        # read data files paths from the .csv file
-        data_dir = config["data_dir"]
-        data = pd.read_csv(os.path.join(data_dir,
-                                        'data_analysis', 'private.csv'))
-        data_path = os.path.join(data_dir, 'private')
-        data_paths = data[
-            ['NewT1_name', 'NewMask_name']].apply(
-                lambda s: data_path + '/' + s)
-        training_files = data_paths.values.tolist()
-
-        # write all the data files into the hdf5 file
-        write_data_to_file(training_files,
-                           config["data_file"],
-                           image_shape=config["image_shape"])
-                           # subject_ids=subject_ids)
+        _save_new_h5_datafile(config["data_file"],
+                              new_image_shape=config["image_shape"])
 
     data_file_opened = open_data_file(config["data_file"])
 
@@ -139,9 +113,10 @@ def main(overwrite_data=False, overwrite_model=False):
         model = load_old_model(config["model_file"])
     else:
         # instantiate new model
+
         print('initializing new isensee model with input shape',
               config['input_shape'])
-        '''
+
         model = isensee2017_model(
             input_shape=config["input_shape"],
             n_labels=config["n_labels"],
@@ -152,8 +127,9 @@ def main(overwrite_data=False, overwrite_model=False):
                               pool_size=config["pool_size"],
                               n_labels=config["n_labels"],
                               initial_learning_rate=config["initial_learning_rate"],
-                              deconvolution=config["deconvolution"])
-
+                              deconvolution=config["deconvolution"],
+                              n_base_filters=config["n_base_filters"])
+        '''
 
     # get training and testing generators
     (train_generator, validation_generator, n_train_steps,
