@@ -39,7 +39,7 @@ def ani_frame(prediction_dir, validation_dir='subject_16'):
     fig.set_size_inches([5, 5])
 
     val_dir = os.path.join(prediction_dir, validation_dir)
-    path_t1 = os.path.join(val_dir, 'data_T1.nii.gz')
+    path_t1 = os.path.join(val_dir, 'data_newT1_name.nii')
     path_true = os.path.join(val_dir, 'truth.nii.gz')
     path_predict = os.path.join(val_dir, 'prediction.nii.gz')
     brain_img = load_img(path_t1).get_fdata()
@@ -84,11 +84,10 @@ def plot_dice_coeff_score(df_scores, prediction_dir, ext):
 
 
 def plot_for_subject(prediction_dir, subject_dir, depth_idx=70,
-                     filename_t1='data_T1.nii.gz',
+                     filename_t1='data_newT1_name.nii',
                      filename_truth='truth.nii.gz',
                      filename_predict='prediction.nii.gz', ext='.png'):
     plt.figure()
-
     val_dir = os.path.join(prediction_dir, subject_dir)
     path_t1 = os.path.join(val_dir, filename_t1)
     path_true = os.path.join(val_dir, filename_truth)
@@ -103,7 +102,7 @@ def plot_for_subject(prediction_dir, subject_dir, depth_idx=70,
 
 
 def plot_for_all_subjects(prediction_dir, depth_idx=70,
-                          filename_t1='data_T1.nii.gz',
+                          filename_t1='data_newT1_name.nii',
                           filename_truth='truth.nii.gz',
                           filename_predict='prediction.nii.gz', ext='.png'):
     # get all the validation dirs
@@ -126,7 +125,7 @@ def _make_new_folder(new_dir):
 if __name__ == "__main__":
     prediction_dir = 'prediction'
     ext = '.png'
-    filename_t1 = 'data_T1.nii.gz'
+    filename_t1 = 'data_NewT1_name.nii'
     filename_truth = 'truth.nii.gz'
     filename_predict = 'prediction.nii.gz'
 
