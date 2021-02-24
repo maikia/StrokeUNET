@@ -125,15 +125,26 @@ def fix_shape(image):
 
 
 def resize(image, new_shape, interpolation="linear"):
-    image = reorder_img(image, resample=interpolation)  # the image is
-    # transposed (??)
+    image = reorder_img(image, resample=interpolation)
     zoom_level = np.divide(new_shape, image.shape)
-    new_spacing = np.divide(image.header.get_zooms(), zoom_level)
-    new_data = resample_to_spacing(image.get_data(), image.header.get_zooms(),
-                                   new_spacing,
-                                   interpolation=interpolation)
-    new_affine = np.copy(image.affine)
-    np.fill_diagonal(new_affine, new_spacing.tolist() + [1])
-    new_affine[:3, 3] += calculate_origin_offset(new_spacing,
+    # if the image should be enlarged place only 0s on the sides: works only if
+    # none of the dimensions is to be downsampled,
+    # otherwise enlarge it using the original function
+    if np.any(zoom_level) < 1:
+        new_spacing = np.divide(image.header.get_zooms(), zoom_level)
+        new_data = resample_to_spacing(image.get_data(),
+                                       image.header.get_zooms(),
+                                       new_spacing,
+                                       interpolation=interpolation)
+        new_affine = np.copy(image.affine)
+        np.fill_diagonal(new_affine, new_spacing.tolist() + [1])
+        new_affine[:3, 3] += calculate_origin_offset(new_spacing,
                                                  image.header.get_zooms())
+    else:
+        new_data = np.zeros(new_shape)
+        new_data[:image.shape[0],
+                 :image.shape[1],
+                 :image.shape[2]] = image.get_data()
+        # not sure if this affine is correct
+        new_affine = np.eye(4)
     return new_img_like(image, new_data, affine=new_affine)
