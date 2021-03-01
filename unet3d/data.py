@@ -41,6 +41,7 @@ def write_image_data_to_file(image_files, data_storage, truth_storage,
             _label_indices = len(set_of_files) - 1
         else:
             _label_indices = label_indices
+
         images = reslice_image_set(set_of_files, image_shape,
                                    label_indices=_label_indices, crop=crop)
         subject_data = [image.get_data() for image in images]
@@ -80,8 +81,8 @@ def write_data_to_file(training_data_files, out_file, image_shape,
     :param training_data_files: List of tuples containing the training data
         files. The modalities should be listed in the same order in each tuple.
         The last item in each tuple must be the labeled image.
-    Example: [('sub1-T1.nii.gz', 'sub1-T2.nii.gz', 'sub1-truth.nii.gz'),
-              ('sub2-T1.nii.gz', 'sub2-T2.nii.gz', 'sub2-truth.nii.gz')]
+    Example: [('sub1-T1.nii.gz', 'sub1-truth.nii.gz'),
+              ('sub2-T1.nii.gz', 'sub2-truth.nii.gz')]
     :param out_file: Where the hdf5 file will be written to.
     :param image_shape: Shape of the images that will be saved to the hdf5
         file.
