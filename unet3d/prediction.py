@@ -139,7 +139,7 @@ def run_validation_case(data_index, output_dir, model, data_file,
     i = 0
     modality = training_modalities
     image = nib.Nifti1Image(test_data[0, i], affine)
-    image.to_filename(os.path.join(output_dir, "data_{0}".format(
+    image.to_filename(os.path.join(output_dir, "data_{0}.nii.gz".format(
         modality)))
 
     test_truth = nib.Nifti1Image(data_file.root.truth[data_index][0], affine)
