@@ -25,7 +25,7 @@ config["image_shape"] = (200, 240, 189)  # original size: (197, 233, 189)
 # ValueError: A `Concatenate` layer requires inputs with matching shapes
 # except for the concat axis. Got in puts shapes:
 # [(None, 512, 50, 60, 10), (None, 256, 50, 60, 5)]
-config["patch_shape"] = (200, 240, 5)  # switch to None to train on the
+config["patch_shape"] = (200, 240, 7)  # switch to None to train on the
 # whole image (cannot due to memory errors)
 config["labels"] = (1)  # the label numbers on the input image, eg (1, 2, 4)
 config["n_base_filters"] = 16
@@ -56,7 +56,7 @@ config["validation_split"] = 0.8  # portion of the data that will be used for
 # training
 config["flip"] = False  # augments the data by randomly flipping
 # an axis
-config["permute"] = False  # data shape must be a cube. Augments the data by
+config["permute"] = True  # data shape must be a cube. Augments the data by
 # permuting in various directions
 config["distort"] = None  # switch to None if you want no distortion
 config["augment"] = False
@@ -71,9 +71,9 @@ config["data_file"] = os.path.abspath("stroke_data.h5")
 config["model_file"] = os.path.abspath("unet_model.h5")
 config["training_file"] = os.path.abspath("training_ids.pkl")
 config["validation_file"] = os.path.abspath("validation_ids.pkl")
-config["overwrite_data"] = False  # If True, will overwrite previous files.
+config["overwrite_data"] = True  # If True, will overwrite previous files.
 # If False, will use previously written files.
-config["overwrite_model"] = False
+config["overwrite_model"] = True
 
 
 def _fetch_training_data_files(data_type='public'):
