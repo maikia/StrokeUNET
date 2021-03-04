@@ -5,7 +5,7 @@ import sys
 sys.path.append('./')
 from unet3d.data import open_data_file, write_data_to_file  # noqa: E402
 from unet3d.generator import get_training_and_validation_generators  # noqa: E402
-# from unet3d.model import isensee2017_model  # noqa: E402
+from unet3d.model import isensee2017_model  # noqa: E402
 from unet3d.model import unet_model_3d
 from unet3d.training import load_old_model, train_model  # noqa: E402
 from unet3d.utils.utils import find_dirs  # noqa: E402
@@ -15,7 +15,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 
 config = dict()
-config["pool_size"] = (2, 2, 1)
+config["pool_size"] = (2, 1, 2)
 # We will be doing max pooling 3 times, so that the size of the image must be
 # divisible by 8 if the pooling size is 2. We are leaving the last dimension to
 # its original value because we keep max pooling third dim 1
@@ -25,7 +25,7 @@ config["image_shape"] = (200, 240, 189)  # original size: (197, 233, 189)
 # ValueError: A `Concatenate` layer requires inputs with matching shapes
 # except for the concat axis. Got in puts shapes:
 # [(None, 512, 50, 60, 10), (None, 256, 50, 60, 5)]
-config["patch_shape"] = (200, 240, 7)  # switch to None to train on the
+config["patch_shape"] = (200, 9, 200)  # switch to None to train on the
 # whole image (cannot due to memory errors)
 config["labels"] = (1)  # the label numbers on the input image, eg (1, 2, 4)
 config["n_base_filters"] = 16
@@ -56,11 +56,11 @@ config["validation_split"] = 0.8  # portion of the data that will be used for
 # training
 config["flip"] = False  # augments the data by randomly flipping
 # an axis
-config["permute"] = True  # data shape must be a cube. Augments the data by
+config["permute"] = False  # data shape must be a cube. Augments the data by
 # permuting in various directions
 config["distort"] = None  # switch to None if you want no distortion
 config["augment"] = False
-config["validation_patch_overlap"] = 0  # if > 0, during training, validation
+config["validation_patch_overlap"] = 5  # if > 0, during training, validation
 # patches will be overlapping
 config["training_patch_start_offset"] = (16, 16, 16)  # randomly offset the
 # first patch index by up to this offset
@@ -116,7 +116,7 @@ def main(overwrite_data=False, overwrite_model=False):
 
         print('initializing new isensee model with input shape',
               config['input_shape'])
-
+        '''
         model = isensee2017_model(
             input_shape=config["input_shape"],
             n_labels=config["n_labels"],
@@ -129,7 +129,6 @@ def main(overwrite_data=False, overwrite_model=False):
                               initial_learning_rate=config["initial_learning_rate"],
                               deconvolution=config["deconvolution"],
                               n_base_filters=config["n_base_filters"])
-        '''
 
     # get training and testing generators
     (train_generator, validation_generator, n_train_steps,
