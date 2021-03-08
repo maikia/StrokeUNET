@@ -119,7 +119,7 @@ class HausdorffDistance(BaseScoreType):
 class AbsoluteVolumeDifference(BaseScoreType):
     is_lower_the_better = True
     minimum = 0.0
-    maximum = np.inf
+    maximum = 1.0
 
     def __init__(self, name='AVD', precision=3):
         self.name = name
