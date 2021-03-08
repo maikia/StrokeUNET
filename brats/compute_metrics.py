@@ -53,6 +53,28 @@ class DiceCoeff(BaseScoreType):
         return dice
 
 
+class HausdorffDistance(BaseScoreType):
+    # recommened to use 95% percentile Hausdorff Distance which tolerates small
+    # otliers
+    is_lower_the_better = True
+    minimum = 0.0
+    maximum = 1.0
+
+    def __init__(self, name='Hausdorff', precision=3):
+        self.name = name
+        self.precision = precision
+
+    def __call__(self, y_true_mask, y_pred_mask):
+        score = self._husdorff_dist(y_true_mask, y_pred_mask)
+        return score
+
+    def _husdorff_dist(self, y_true_mask, y_pred_mask):
+
+        pass
+
+        return hausdorff
+
+
 def dummy_predict(truth, prob):
     # prob is a probability that 1 will still be 1 in a mask
     # and 0 will still be 0 in a mask
