@@ -53,12 +53,33 @@ class DiceCoeff(BaseScoreType):
         return dice
 
 
+def dummy_predict(truth, prob):
+    # prob is a probability that 1 will still be 1 in a mask
+    # and 0 will still be 0 in a mask
+    if prob == 1:
+        return truth
+    elif prob == 0:
+        return np.zeros(truth.shape)
+    else:
+        pred = truth.copy()
+        mask_1 = truth == 1
+        mask_0 = truth == 0
+
+        pred[mask_1] = np.random.choice(
+            [0, 1], np.sum(mask_1), p=[1-prob, prob]
+            )
+        pred[mask_0] = np.random.choice(
+            [0, 1], np.sum(mask_0), p=[prob, 1-prob]
+            )
+        return pred
+
+
 if __name__ == "__main__":
     truth = 'data/private/1_lesion.nii.gz'
-    prediction = 'data/private/1_lesion.nii.gz'
-
     truth_arr = load_img(truth).get_fdata()
-    prediction_arr = load_img(prediction).get_fdata()
+
+    match_prob = 0.99
+    pred_arr = dummy_predict(truth_arr, match_prob)
 
     score = DiceCoeff()
-    print('Dice coeff is: ', score.score_function(truth_arr, prediction_arr))
+    print('Dice coeff is: ', score.score_function(truth_arr, pred_arr))
