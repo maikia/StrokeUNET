@@ -30,7 +30,8 @@ class BaseScoreType(object):
 
 def check_mask(mask):
     ''' assert that the given mask consists only of 0s and 1s '''
-    assert np.all(np.isin(mask, [0, 1]))
+    assert np.all(np.isin(mask, [0, 1])), ('Cannot compute the score.'
+                                           'Found values other than 0s and 1s')
 
 
 # define the scores
@@ -75,6 +76,8 @@ class Precision(BaseScoreType):
     def __call__(self, y_true_mask, y_pred_mask):
         check_mask(y_true_mask)
         check_mask(y_pred_mask)
+        if np.sum(y_pred_mask) == 0 and not np.sum(y_true_mask) == 0:
+            return 0.0
         score = precision_score(y_true_mask.ravel(), y_pred_mask.ravel())
         return score
 
@@ -113,6 +116,23 @@ class HausdorffDistance(BaseScoreType):
         return score
 
 
+class AbsoluteVolumeDifference(BaseScoreType):
+    is_lower_the_better = True
+    minimum = 0.0
+    maximum = np.inf
+
+    def __init__(self, name='AVD', precision=3):
+        self.name = name
+        self.precision = precision
+
+    def __call__(self, y_true_mask, y_pred_mask):
+        check_mask(y_true_mask)
+        check_mask(y_pred_mask)
+        score = np.abs(np.mean(y_true_mask) - np.mean(y_pred_mask))
+
+        return score
+
+
 def dummy_predict(truth, prob):
     # prob is a probability that 1 will still be 1 in a mask
     # and 0 will still be 0 in a mask
@@ -138,7 +158,7 @@ if __name__ == "__main__":
     truth = 'data/private/1_lesion.nii.gz'
     truth_arr = load_img(truth).get_fdata()
 
-    match_prob = 0.01
+    match_prob = 0.0
     pred_arr = dummy_predict(truth_arr, match_prob)
 
     score_dice = DiceCoeff()
@@ -153,4 +173,8 @@ if __name__ == "__main__":
 
     score_precision = Precision()
     print('Precision is: ', score_precision.score_function(
+        truth_arr, pred_arr))
+
+    score_avd = AbsoluteVolumeDifference()
+    print('AVD is: ', score_avd.score_function(
         truth_arr, pred_arr))
