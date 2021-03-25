@@ -142,7 +142,7 @@ if __name__ == "__main__":
                 save_path_lesion = os.path.join(save_dir, new_lesion_file_name)
                 lesion_size, x, y, z = read_lesion_info(
                     next_case, save_path=save_path_lesion)
-
+                
                 new_t1_filename = str(idx) + '_T1.nii.gz'
                 save_path_t1 = os.path.join(save_dir, new_t1_filename)
                 old_mean_intensity = normalize_t1_intensity(

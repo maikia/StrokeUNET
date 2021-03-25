@@ -48,6 +48,8 @@ def normalize_intensity(nifti_filename, new_mean_normalize):
     img_nifti = load_img(nifti_filename)
     data_nifti = img_nifti.get_fdata()
     img_data = data_nifti / get_mean(data_nifti) * new_mean_normalize
+    orig_type = img_nifti.get_data_dtype()
+    img_data = img_data.astype(orig_type)
     normalized_data = new_img_like(img_nifti, img_data, affine=None,
                                    copy_header=False)
     return normalized_data
@@ -167,6 +169,7 @@ def combine_lesions(path, lesion_str='Lesion'):
             n_lesions += 1
     if n_lesions > 0:
         lesion[lesion > 0] = 1
+        lesion = lesion.astype('int8')  # we don't have to keep it as int
         masked = new_img_like(lesion_img, lesion,
                               affine=None, copy_header=False)
         return n_lesions, masked
