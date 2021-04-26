@@ -12,7 +12,7 @@ import matplotlib.pylab as plt
 from nibabel.filebasedimages import ImageFileError
 from nilearn import plotting
 from nilearn.image import load_img, math_img, new_img_like
-from nipype.interfaces.fsl import BET
+# from nipype.interfaces.fsl import BET
 import numpy as np
 import pandas as pd
 from unet3d.utils.utils import find_dirs
@@ -376,6 +376,7 @@ def read_dataset(name):
         data_storage = ('../../../data/')
     # first data set
     dataset1 = {
+        # full public dataset
         "name": 'dataset_1',
         "raw_dir": os.path.join(data_storage, 'ATLAS_R1.1-public/'),
         "lesion_str": 'Lesion',
@@ -406,6 +407,17 @@ def read_dataset(name):
     }
     if name == dataset3['name']:
         return dataset3
+
+    dataset4 = {
+        # full private dataset (to be partly turned public)
+        "name": 'dataset_4',
+        "raw_dir": os.path.join(data_storage, 'data_2021_04/'),
+        "lesion_str": 'lesion',
+        "t1_inc_str": 'T1w',
+        "t1_exc_str": 'lesion'
+    }
+    if name == dataset4['name']:
+        return dataset4
 
     # third dataset (healthy patients)
     # here all the scans are in the single directory
