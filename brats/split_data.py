@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
-from preprocess import find_dirs, read_dataset
+from preprocess import read_dataset
 from analyze_raw import read_lesion_info, list_files, normalize_t1_intensity
 
 
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     data = []
 
     if not len(file_list):
-        print(f'No data files found in {data_info["raw_dir"]}')
+        print(f'No data files found')
     else:
         print('Please wait. I am gathering information')
         n_file = 0
@@ -120,8 +120,8 @@ if __name__ == "__main__":
             save_path_t1 = os.path.join(save_dir_exact, new_t1_filename)
             mean_intensity = round(normalize_t1_intensity(
                     t1_path, save_path_t1, new_intensity=None), 4)
-            
-            data.append([next_case[0], next_case[1], # 'RawPath', 'T1_filename'
+
+            data.append([next_case[0], next_case[1],  # 'RawPath','T1_filename'
                         site, len(next_case[2]),  # 'site', 'n_lesion_files'
                         x, y, z,  # 'Size_x', 'Size_y', 'Size_z'
                         save_dir_exact,  # 'NewPath'
@@ -143,6 +143,3 @@ if __name__ == "__main__":
     # plot the distributions
     # 1. lesion_size
     # 2. lesion_intensity
-
-
-
