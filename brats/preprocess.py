@@ -419,6 +419,17 @@ def read_dataset(name):
     if name == dataset4['name']:
         return dataset4
 
+    dataset5 = {
+        # full private dataset (to be partly turned public)
+        "name": 'dataset_5',
+        "raw_dir": os.path.join(data_storage, 'data_2021_05/'),
+        "lesion_str": 'lesion',
+        "t1_inc_str": 'T1w',
+        "t1_exc_str": 'lesion'
+    }
+    if name == dataset5['name']:
+        return dataset5
+
     # third dataset (healthy patients)
     # here all the scans are in the single directory
     dataset_healthy = {
