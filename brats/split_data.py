@@ -27,14 +27,21 @@ if __name__ == "__main__":
     add_dir(save_dir_private_train)
     add_dir(save_dir_private_test)
 
-    atlas_dataset = 'dataset_1'  # already public, old dataset
-    new_dataset = 'dataset_4'
+    atlas_dataset = 'dataset_1'  # already public, old dataset. all must stay
+    # public
+    # private dataset, may be split between private and public
+    new_datasets = ['dataset_4', 'dataset_5']
+
+    # read datasets
     data_info_atlas = read_dataset(atlas_dataset)
     assert data_info_atlas is not None
-    data_info_new = read_dataset(new_dataset)
-    assert data_info_new is not None
     file_list_atlas = list_files(data_info_atlas)
-    file_list_new = list_files(data_info_new)
+
+    file_list_new = []
+    for dataset in new_datasets:
+        data_info_new = read_dataset(dataset)
+        assert data_info_new is not None
+        file_list_new.extend(list_files(data_info_new))
 
     n_atlas = len(file_list_atlas)
     n_new = len(file_list_new)
